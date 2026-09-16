@@ -12,8 +12,20 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log('Supabase connected');
+  supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false },
+    global: {
+      headers: { 'x-application-name': 'scheduling-platform' },
+      // 增加超时时间，避免 Render 冷启动时连接超时
+      fetch: (url, options = {}) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        return fetch(url, { ...options, signal: controller.signal })
+          .finally(() => clearTimeout(timeoutId));
+      }
+    }
+  });
+  console.log('Supabase client created for:', SUPABASE_URL);
 } else {
   console.log('Supabase not configured, using file storage');
 }
@@ -187,6 +199,27 @@ function saveHistory() {
   redoStack = []; // 新操作清空 redo 栈
 }
 
+// 带重试的 Supabase 操作
+async function supabaseRetry(operation, maxRetries = 3) {
+  if (!supabase) return { error: new Error('supabase not configured') };
+  let lastError = null;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const result = await operation();
+      if (!result.error) return result;
+      lastError = result.error;
+      console.error(`supabase attempt ${i + 1} error:`, result.error.message);
+    } catch (e) {
+      lastError = e;
+      console.error(`supabase attempt ${i + 1} exception:`, e.message);
+    }
+    if (i < maxRetries - 1) {
+      await new Promise(r => setTimeout(r, 2000 * (i + 1))); // 递增等待
+    }
+  }
+  return { error: lastError };
+}
+
 // 异步保存数据到 Supabase（同时写入本地文件作为备份）
 async function persist() {
   const dataStr = JSON.stringify(DB, null, 2);
@@ -198,39 +231,31 @@ async function persist() {
   }
   // Supabase 存储（生产环境主要用这个）
   if (supabase) {
-    try {
-      const { error } = await supabase
-        .from('app_data')
-        .upsert({ id: 'main', data: DB, updated_at: new Date().toISOString() });
-      if (error) console.error('supabase persist error:', error.message);
-    } catch (e) {
-      console.error('supabase persist error:', e.message);
-    }
+    const { error } = await supabaseRetry(() =>
+      supabase.from('app_data').upsert({ id: 'main', data: DB, updated_at: new Date().toISOString() })
+    );
+    if (error) console.error('supabase persist failed after retries:', error.message);
   }
 }
 
 // 异步从 Supabase 加载数据（失败则回退到本地文件）
 async function loadPersisted() {
-  // 先尝试从 Supabase 加载
+  // 先尝试从 Supabase 加载（带重试）
   if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('app_data')
-        .select('data')
-        .eq('id', 'main')
-        .single();
-      if (!error && data && data.data) {
-        const loaded = data.data;
-        if (loaded.users && loaded.teachers && loaded.courses) {
-          DB = loaded;
-          console.log('data loaded from supabase');
-          // 同步到本地文件
-          try { fs.writeFileSync(DB_FILE, JSON.stringify(DB, null, 2)); } catch(e) {}
-          return true;
-        }
+    const { data, error } = await supabaseRetry(() =>
+      supabase.from('app_data').select('data').eq('id', 'main').single()
+    );
+    if (!error && data && data.data) {
+      const loaded = data.data;
+      if (loaded.users && loaded.teachers && loaded.courses) {
+        DB = loaded;
+        console.log('data loaded from supabase');
+        // 同步到本地文件
+        try { fs.writeFileSync(DB_FILE, JSON.stringify(DB, null, 2)); } catch(e) {}
+        return true;
       }
-    } catch (e) {
-      console.error('supabase load error:', e.message);
+    } else if (error) {
+      console.error('supabase load failed after retries:', error.message);
     }
   }
   // 回退到本地文件
