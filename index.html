@@ -1,0 +1,3829 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>排课平台</title>
+<style>
+/* ============ 基础重置 ============ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #3b5bdb;
+  --primary-light: #6c8eef;
+  --primary-dark: #2b44a8;
+  --bg: #f5f6fa;
+  --bg-card: #ffffff;
+  --border: #e4e7ee;
+  --border-light: #eef0f5;
+  --text: #1f2330;
+  --text-secondary: #5c6273;
+  --text-muted: #9097a8;
+  --sidebar-bg: #ffffff;
+  --sidebar-width: 220px;
+  --topbar-height: 56px;
+  --danger: #e5484d;
+  --success: #30a46c;
+  --warning: #f5a623;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
+  --shadow: 0 4px 12px rgba(15,23,42,.08);
+  --shadow-lg: 0 12px 32px rgba(15,23,42,.14);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --hour-height: 56px;
+}
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; font-size: 14px; color: var(--text); }
+a { color: var(--primary); text-decoration: none; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #cfd3de; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #b4b9c9; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ============ 通用按钮 ============ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--bg-card); color: var(--text);
+  transition: all .15s; white-space: nowrap;
+}
+.btn:hover { border-color: #c7ccd9; background: #f9fafc; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+.btn-danger { color: var(--danger); border-color: #f0c9cb; background: #fef0f0; }
+.btn-danger:hover { background: #fde0e1; }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover { background: #eef0f5; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-icon { padding: 4px 8px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-icon:not(:disabled):hover { background: #f0f0f0; }
+.btn-icon { padding: 6px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--text-secondary); }
+.btn-icon:hover { background: #eef0f5; color: var(--text); }
+
+/* ============ 登录页 ============ */
+#loginView {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #4c6ef5 0%, #3b5bdb 50%, #2b44a8 100%);
+}
+.login-card {
+  width: 380px; max-width: 92vw; background: #fff; border-radius: 14px;
+  padding: 36px 32px 28px; box-shadow: var(--shadow-lg);
+}
+.login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.login-logo .logo-icon {
+  width: 38px; height: 38px; border-radius: 10px; background: var(--primary);
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; font-weight: 700;
+}
+.login-logo h1 { font-size: 20px; font-weight: 700; }
+.login-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary); }
+.form-group input, .form-group select {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: #fff; outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(59,91,219,.12); }
+.login-btn { width: 100%; padding: 10px; font-size: 14px; margin-top: 4px; }
+.login-error { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; text-align: center; }
+.login-hint { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--border); font-size: 12px; color: var(--text-muted); line-height: 1.8; }
+.login-hint code { background: #f0f1f5; padding: 1px 5px; border-radius: 3px; color: var(--text-secondary); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+/* ============ 主应用布局 ============ */
+#appView { display: none; height: 100vh; }
+#appView.active { display: flex; }
+
+/* 侧边栏 */
+.sidebar {
+  width: var(--sidebar-width); flex-shrink: 0; background: var(--sidebar-bg);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  height: 100vh; position: sticky; top: 0; z-index: 20;
+}
+.sidebar-header { padding: 16px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-light); }
+.sidebar-header .logo-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
+.sidebar-header .logo-text { font-size: 15px; font-weight: 700; }
+.sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+.nav-section-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; padding: 14px 10px 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all .12s; width: 100%; text-align: left;
+}
+.nav-item:hover { background: #f1f3f8; color: var(--text); }
+.nav-item.active { background: #eef1fd; color: var(--primary); }
+.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+.sidebar-footer { padding: 12px 14px; border-top: 1px solid var(--border-light); }
+.user-chip { display: flex; align-items: center; gap: 10px; }
+.user-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--primary-light); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 11px; color: var(--text-muted); }
+.role-tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; }
+.role-tag.admin { background: #fde7e9; color: #c01a35; }
+.role-tag.scheduler { background: #fff3d6; color: #8a5a00; }
+.role-tag.teacher { background: #d8f0e4; color: #16794a; }
+
+/* 主区域 */
+.main-area { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100vh; }
+.topbar {
+  height: var(--topbar-height); flex-shrink: 0; background: var(--bg-card);
+  border-bottom: 1px solid var(--border); display: flex; align-items: center;
+  padding: 0 18px; gap: 14px; z-index: 10;
+}
+.topbar-title { font-size: 16px; font-weight: 600; }
+.topbar-spacer { flex: 1; }
+.toolbar-group { display: flex; align-items: center; gap: 8px; }
+
+/* 日期导航 */
+.date-nav { display: flex; align-items: center; gap: 6px; }
+.date-label { font-size: 15px; font-weight: 600; min-width: 120px; text-align: center; }
+
+/* 视图切换标签 */
+.view-tabs { display: inline-flex; background: #eef0f5; border-radius: var(--radius-sm); padding: 3px; }
+.view-tab { padding: 5px 14px; font-size: 13px; font-weight: 500; color: var(--text-secondary); border-radius: 4px; transition: all .12s; }
+.view-tab:hover { color: var(--text); }
+.view-tab.active { background: #fff; color: var(--primary); box-shadow: var(--shadow-sm); }
+
+/* 筛选 */
+.filter-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; font-size: 13px; outline: none; cursor: pointer; min-width: 110px; }
+.filter-select:focus { border-color: var(--primary-light); }
+
+/* 内容区 */
+.content { flex: 1; overflow: hidden; position: relative; }
+.page { display: none; height: 100%; }
+.page.active { display: block; }
+/* 学生排课表视图需要可滚动 */
+#page-calendar #calendarContainer { height: 100%; overflow-y: auto; }
+
+/* ============ 日视图 ============ */
+.day-view-wrap { height: 100%; overflow-y: auto; padding: 12px; }
+.day-container { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden; }
+.day-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.day-header .day-title { font-size: 18px; font-weight: 700; }
+.day-header .day-weekday { color: var(--text-muted); font-size: 13px; margin-left: 8px; }
+.day-body { position: relative; }
+.time-grid { position: relative; }
+.time-label {
+  position: absolute; left: 0; width: 56px; text-align: right; padding-right: 10px;
+  font-size: 11px; color: var(--text-muted); transform: translateY(-6px);
+}
+.time-line { position: absolute; left: 56px; right: 0; height: 1px; background: var(--border-light); }
+.time-line.half { border-top: 1px dashed #f0f1f5; background: none; }
+.now-line { position: absolute; left: 56px; right: 0; height: 2px; background: var(--danger); z-index: 5; }
+.now-line::before { content: ''; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+.day-events { position: absolute; left: 64px; right: 8px; top: 0; bottom: 0; }
+
+/* 课程卡片(通用) */
+.course-card {
+  position: absolute; border-radius: 6px; padding: 6px 8px; cursor: pointer; overflow: hidden;
+  border-left: 3px solid; box-shadow: var(--shadow-sm); transition: box-shadow .15s, transform .15s;
+  background: var(--bg-card); font-size: 12px;
+}
+.course-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); z-index: 6; }
+.course-card .cc-title { font-weight: 600; font-size: 12.5px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.course-card .cc-meta { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.course-card.compact { padding: 3px 6px; }
+.course-card.compact .cc-title { font-size: 11px; }
+
+/* ============ 周视图 ============ */
+.week-view-wrap { height: 100%; display: flex; flex-direction: column; }
+.week-header {
+  display: grid; grid-template-columns: 56px repeat(7, 1fr); border-bottom: 1px solid var(--border);
+  background: var(--bg-card); flex-shrink: 0;
+}
+.week-header .wh-corner { border-right: 1px solid var(--border-light); }
+.week-header .wh-day { padding: 8px 6px; text-align: center; border-right: 1px solid var(--border-light); }
+.week-header .wh-day .wd-name { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+.week-header .wh-day .wd-num { font-size: 16px; font-weight: 600; margin-top: 2px; }
+.week-header .wh-day.today .wd-num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; }
+.week-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.week-grid { display: grid; grid-template-columns: 56px repeat(7, 1fr); position: relative; }
+.week-time-col { border-right: 1px solid var(--border-light); }
+.week-time-label { height: var(--hour-height); text-align: right; padding-right: 10px; font-size: 11px; color: var(--text-muted); position: relative; }
+.week-time-label span { position: absolute; top: -6px; right: 10px; }
+.week-day-col { border-right: 1px solid var(--border-light); position: relative; }
+.week-day-col.today { background: #fafbff; }
+.week-hour-cell { height: var(--hour-height); border-bottom: 1px solid var(--border-light); }
+.week-hour-cell.half-border { border-bottom: 1px dashed #f3f4f8; }
+.week-events { position: absolute; top: 0; left: 2px; right: 2px; bottom: 0; }
+
+/* ============ 月视图 ============ */
+.month-view-wrap { height: 100%; display: flex; flex-direction: column; padding: 12px; }
+.month-grid {
+  flex: 1; display: grid; grid-template-columns: repeat(7, 1fr);
+  background: var(--border); gap: 1px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+}
+.month-weekday-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; margin-bottom: 1px; }
+.month-weekday { background: var(--bg-card); text-align: center; padding: 8px; font-size: 12px; font-weight: 600; color: var(--text-secondary); border-radius: var(--radius-sm); }
+.month-cell {
+  background: var(--bg-card); padding: 6px; overflow-y: auto; min-height: 0; position: relative;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.month-cell.other-month { background: #fafbfc; }
+.month-cell .mc-date { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 2px; }
+.month-cell.today .mc-date { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; }
+.month-event {
+  font-size: 11px; padding: 2px 6px; border-radius: 4px; cursor: pointer; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis; border-left: 3px solid; background: #f7f8fc; color: var(--text-secondary);
+  transition: transform .1s;
+}
+.month-event:hover { transform: translateX(2px); }
+.month-more { font-size: 10px; color: var(--text-muted); padding: 0 6px; cursor: pointer; }
+.month-more:hover { color: var(--primary); }
+
+/* ============ 学期视图 ============ */
+.term-view-wrap { height: 100%; overflow-y: auto; padding: 12px; }
+.term-month-block { margin-bottom: 20px; }
+.term-month-header {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  padding: 6px 4px 8px; display: flex; align-items: center; gap: 8px;
+  border-bottom: 2px solid var(--primary); margin-bottom: 6px;
+}
+.term-month-header .tm-badge {
+  font-size: 11px; font-weight: 600; background: var(--primary); color: #fff;
+  padding: 2px 8px; border-radius: 12px;
+}
+.term-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  background: var(--border); gap: 1px; border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.term-grid .month-cell { min-height: 56px; }
+
+/* ============ 弹窗 ============ */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 500;
+  display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  width: 520px; max-width: 100%; background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg);
+  overflow: hidden; animation: modalIn .18s ease;
+}
+@keyframes modalIn { from { transform: translateY(-12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-close { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); color: var(--text-muted); font-size: 18px; }
+.modal-close:hover { background: #f1f3f8; color: var(--text); }
+.modal-body { padding: 20px; max-height: calc(100vh - 200px); overflow-y: auto; }
+.modal-footer { padding: 14px 20px; border-top: 1px solid var(--border-light); display: flex; justify-content: flex-end; gap: 10px; }
+
+.form-row { display: flex; gap: 14px; }
+.form-row .form-group { flex: 1; }
+.form-group .required { color: var(--danger); margin-left: 2px; }
+.color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.color-option { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform .1s; }
+.color-option:hover { transform: scale(1.1); }
+.color-option.selected { border-color: var(--text); box-shadow: 0 0 0 2px #fff inset; }
+.color-label-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.color-preview-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+/* ============ 老师面板 ============ */
+.teachers-page { padding: 20px; height: 100%; overflow-y: auto; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.page-header h2 { font-size: 18px; font-weight: 700; }
+.page-header .page-desc { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.teacher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.teacher-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px; box-shadow: var(--shadow-sm); transition: box-shadow .15s, transform .15s; cursor: pointer;
+}
+.teacher-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.teacher-card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.teacher-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #fff; font-size: 16px; flex-shrink: 0; }
+.teacher-card-name { font-size: 15px; font-weight: 600; }
+.teacher-card-id { font-size: 12px; color: var(--text-muted); }
+.teacher-stats { display: flex; justify-content: space-between; align-items: flex-end; }
+.teacher-stat-num { font-size: 26px; font-weight: 700; color: var(--primary); }
+.teacher-stat-label { font-size: 12px; color: var(--text-muted); }
+
+/* 统计概览卡片 */
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-sm); }
+.stat-card .sc-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.stat-card .sc-value { font-size: 24px; font-weight: 700; }
+.stat-card .sc-value.primary { color: var(--primary); }
+
+/* 空状态 */
+.empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+.empty-state svg { width: 56px; height: 56px; margin-bottom: 12px; opacity: .4; }
+.empty-state p { font-size: 14px; }
+
+/* ============ 响应式 ============ */
+@media (max-width: 768px) {
+  :root { --sidebar-width: 0px; }
+  .sidebar { position: fixed; left: -240px; width: 240px; transition: left .2s; z-index: 100; box-shadow: var(--shadow-lg); }
+  .sidebar.open { left: 0; }
+  .topbar { padding: 0 10px; gap: 8px; }
+  .date-label { min-width: 80px; font-size: 13px; }
+  .view-tab { padding: 5px 10px; font-size: 12px; }
+  .filter-select { min-width: 90px; font-size: 12px; }
+  .btn span.hide-mobile { display: none; }
+  .modal { width: 100%; }
+  .form-row { flex-direction: column; gap: 0; }
+  .month-cell { min-height: 70px; }
+  .menu-toggle { display: inline-flex !important; }
+}
+.menu-toggle { display: none; }
+.sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 90; }
+.sidebar-backdrop.active { display: block; }
+
+/* 学生排课表视图 */
+.student-schedule-wrap {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  overflow: visible;
+}
+.student-schedule-wrap.exporting { overflow: visible !important; }
+.ss-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+.ss-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: #fff;
+  table-layout: fixed;
+}
+.ss-table th, .ss-table td {
+  border: 1px solid #333;
+  padding: 6px 8px;
+  vertical-align: top;
+  text-align: center;
+  word-break: break-word;
+}
+.ss-corner, .ss-date-label, .ss-content-label {
+  background: #d9d9d9 !important;
+  font-weight: 600;
+  font-size: 12px;
+  color: #333;
+  width: 50px;
+  min-width: 50px;
+}
+.ss-day-header {
+  background: #f0f0f0;
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+  padding: 8px;
+}
+.ss-date-row .ss-date-cell {
+  font-size: 12px;
+  color: #333;
+  background: #fff;
+}
+.ss-other-month { color: #bbb !important; }
+.ss-today { background: #e8f0fe !important; font-weight: 600; }
+.ss-content-row .ss-content-cell {
+  background: #fff;
+  min-height: 50px;
+}
+.ss-course {
+  text-align: center;
+  padding: 3px 0;
+  line-height: 1.4;
+}
+.ss-course + .ss-course {
+  border-top: 1px dashed #eee;
+  margin-top: 3px;
+  padding-top: 3px;
+}
+.ss-time {
+  font-size: 12px;
+  font-weight: 600;
+}
+.ss-info {
+  font-size: 12px;
+  font-weight: 500;
+}
+.ss-notes {
+  margin-top: 16px;
+  background: #fff9c4;
+  border: 1px solid #f0e68c;
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+.ss-notes-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #b71c1c;
+  margin-bottom: 4px;
+}
+.ss-notes-content {
+  font-size: 12px;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* 时间模式切换按钮 */
+.time-mode-btn {
+  font-size: 11px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px;
+  background: #f5f6fa; color: var(--text-secondary); cursor: pointer; margin-left: 6px;
+  font-weight: 400; transition: all .15s;
+}
+.time-mode-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* 导出下拉菜单 */
+.export-dropdown { position: relative; display: inline-block; }
+.export-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  z-index: 1000;
+  min-width: 170px;
+  overflow: hidden;
+}
+.export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background .15s;
+}
+.export-menu-item:hover { background: #f0f4ff; color: #1c7ed6; }
+.export-menu-item svg { flex-shrink: 0; }
+</style>
+<script src="/socket.io/socket.io.js"></script>
+<script src="html2canvas.min.js"></script>
+</head>
+<body>
+
+<!-- ============ 登录页 ============ -->
+<div id="loginView" style="display: none;">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">排</div>
+      <h1>排课平台</h1>
+    </div>
+    <p class="login-sub">登录以管理你的课程安排</p>
+    <div class="form-group">
+      <label>用户名 / 老师姓名</label>
+      <input type="text" id="loginUser" placeholder="输入用户名或老师姓名" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" id="loginPass" placeholder="请输入密码" autocomplete="off">
+    </div>
+    <button type="button" class="btn btn-primary login-btn" onclick="handleLogin()">登 录</button>
+    <div class="login-error" id="loginError"></div>
+    <p style="margin-top:12px;font-size:12px;color:var(--text-muted);text-align:center;">老师可输入用户名登录，如「teacher1」</p>
+  </div>
+</div>
+
+<!-- ============ 主应用 ============ -->
+<div id="appView" class="active">
+  <!-- 侧边栏 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">排</div>
+      <span class="logo-text">排课平台</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">工作区</div>
+      <button class="nav-item active" data-page="calendar" onclick="switchPage('calendar')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+        日历排课
+      </button>
+      <button class="nav-item admin-only" data-page="teachers" onclick="switchPage('teachers')" id="teachersNavItem" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        老师管理
+      </button>
+      <button class="nav-item admin-only" data-page="attendance" onclick="switchPage('attendance')" id="attendanceNavItem" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        签到统计
+      </button>
+      <button class="nav-item admin-only" data-page="settings" onclick="switchPage('settings')" id="settingsNavItem" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        设置
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar">管</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">管理员</div>
+          <div class="user-role"><span class="role-tag admin" id="userRoleTag">管理员</span></div>
+        </div>
+        <button class="btn-icon" title="退出登录" onclick="handleLogout()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
+
+  <!-- 主区域 -->
+  <div class="main-area">
+    <!-- 顶部工具栏 -->
+    <header class="topbar" id="topbar">
+      <button class="btn-icon menu-toggle" onclick="toggleSidebar(true)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <div class="topbar-title" id="topbarTitle">日历排课</div>
+      <div class="topbar-spacer"></div>
+      <div class="toolbar-group" id="calendarToolbar">
+        <select class="filter-select" id="teacherFilter" onchange="renderCurrentView(); saveAppState()" title="按老师筛选"><option value="">全部老师</option></select>
+        <select class="filter-select" id="studentFilter" onchange="renderCurrentView(); saveAppState()" title="按学生筛选"><option value="">全部学生</option></select>
+        <div class="date-nav">
+          <button class="btn-icon" onclick="navigateDate(-1)" title="上一个">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button class="btn btn-sm" onclick="goToday()">今天</button>
+          <button class="btn-icon" onclick="navigateDate(1)" title="下一个">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+          <span class="date-label" id="dateLabel">8月10日 - 8月16日</span>
+        </div>
+        <div class="view-tabs">
+          <button class="view-tab" data-view="day" onclick="switchView('day')">日</button>
+          <button class="view-tab active" data-view="week" onclick="switchView('week')">周</button>
+          <button class="view-tab" data-view="month" onclick="switchView('month')">月</button>
+          <button class="view-tab" data-view="term" onclick="switchView('term')">学期</button>
+          <button class="view-tab" data-view="custom" onclick="switchView('custom')">自定义</button>
+        </div>
+        <div id="customRangePicker" style="display:none;align-items:center;gap:4px;">
+          <input type="date" id="customStartDate" class="filter-select" style="width:130px;font-size:12px;" onchange="renderCurrentView(); saveAppState()">
+          <span style="font-size:12px;color:#666;">至</span>
+          <input type="date" id="customEndDate" class="filter-select" style="width:130px;font-size:12px;" onchange="renderCurrentView(); saveAppState()">
+        </div>
+        <select id="termMonthCount" class="filter-select" style="display:none;min-width:70px;font-size:12px;" onchange="renderCurrentView(); saveAppState()" title="学期跨度">
+          <option value="2">2个月</option>
+          <option value="3" selected>3个月</option>
+          <option value="4">4个月</option>
+          <option value="5">5个月</option>
+          <option value="6">6个月</option>
+        </select>
+        <button class="btn btn-sm btn-icon" id="undoBtn" onclick="doUndo()" title="撤销 (Ctrl+Z)" style="opacity:0.4;cursor:not-allowed;" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-15-6.7L3 13"></path></svg>
+        </button>
+        <button class="btn btn-sm btn-icon" id="redoBtn" onclick="doRedo()" title="重做 (Ctrl+Y)" style="opacity:0.4;cursor:not-allowed;" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 15-6.7L21 13"></path></svg>
+        </button>
+        <button class="btn btn-primary btn-sm" id="newCourseBtn" onclick="openCourseModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span class="hide-mobile">新建课程</span>
+        </button>
+        <div class="export-dropdown">
+          <button class="btn btn-sm" onclick="toggleExportMenu(event)" title="导出排课表">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span class="hide-mobile">导出</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="export-menu" id="exportMenu" style="display:none;">
+            <div class="export-menu-item" onclick="exportCSV(); closeExportMenu();">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line></svg>
+              <span>导出表格 (CSV)</span>
+            </div>
+            <div class="export-menu-item" onclick="exportImage(); closeExportMenu();">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              <span>导出图片 (PNG)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 内容区 -->
+    <div class="content">
+      <!-- 日历页 -->
+      <div class="page active" id="page-calendar">
+        <div id="calendarContainer" style="height:100%;"><div class="week-view-wrap">
+    <div class="week-header">
+      <div class="wh-corner"></div><div class="wh-day ">
+      <div class="wd-name">周一</div>
+      <div class="wd-num">10</div>
+    </div><div class="wh-day ">
+      <div class="wd-name">周二</div>
+      <div class="wd-num">11</div>
+    </div><div class="wh-day ">
+      <div class="wd-name">周三</div>
+      <div class="wd-num">12</div>
+    </div><div class="wh-day ">
+      <div class="wd-name">周四</div>
+      <div class="wd-num">13</div>
+    </div><div class="wh-day ">
+      <div class="wd-name">周五</div>
+      <div class="wd-num">14</div>
+    </div><div class="wh-day today">
+      <div class="wd-name">周六</div>
+      <div class="wd-num">15</div>
+    </div><div class="wh-day ">
+      <div class="wd-name">周日</div>
+      <div class="wd-num">16</div>
+    </div></div><div class="week-body"><div class="week-grid" style="min-height:840px;"><div class="week-time-col"><div class="week-time-label" style="height:56px;"><span>07:00</span></div><div class="week-time-label" style="height:56px;"><span>08:00</span></div><div class="week-time-label" style="height:56px;"><span>09:00</span></div><div class="week-time-label" style="height:56px;"><span>10:00</span></div><div class="week-time-label" style="height:56px;"><span>11:00</span></div><div class="week-time-label" style="height:56px;"><span>12:00</span></div><div class="week-time-label" style="height:56px;"><span>13:00</span></div><div class="week-time-label" style="height:56px;"><span>14:00</span></div><div class="week-time-label" style="height:56px;"><span>15:00</span></div><div class="week-time-label" style="height:56px;"><span>16:00</span></div><div class="week-time-label" style="height:56px;"><span>17:00</span></div><div class="week-time-label" style="height:56px;"><span>18:00</span></div><div class="week-time-label" style="height:56px;"><span>19:00</span></div><div class="week-time-label" style="height:56px;"><span>20:00</span></div><div class="week-time-label" style="height:56px;"><span>21:00</span></div></div><div class="week-day-col "><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-events"><div class="course-card " style="top:56px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#3b5bdb;background:#eef1fd;" onclick="openCourseModal('c1')">
+        <div class="cc-title" style="color:#2b44a8;">高等数学</div>
+        <div class="cc-meta">08:00-09:30 钱潇文</div>
+        <div class="cc-meta">1号楼301</div>
+      </div><div class="course-card " style="top:168px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#0c9b9b;background:#e0f5f5;" onclick="openCourseModal('c2')">
+        <div class="cc-title" style="color:#076a6a;">大学英语</div>
+        <div class="cc-meta">10:00-11:30 周楚涵</div>
+        <div class="cc-meta">2号楼201</div>
+      </div><div class="course-card " style="top:392px;height:110px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#30a46c;background:#dcefe2;" onclick="openCourseModal('c3')">
+        <div class="cc-title" style="color:#1d7a4d;">物理实验</div>
+        <div class="cc-meta">14:00-16:00 吴陈墨</div>
+        <div class="cc-meta">实验楼501</div>
+      </div></div></div><div class="week-day-col "><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-events"><div class="course-card " style="top:84px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#3b5bdb;background:#eef1fd;" onclick="openCourseModal('c4')">
+        <div class="cc-title" style="color:#2b44a8;">线性代数</div>
+        <div class="cc-meta">08:30-10:00 钱潇文</div>
+        <div class="cc-meta">1号楼105</div>
+      </div><div class="course-card " style="top:364px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#e8833a;background:#fdf0e3;" onclick="openCourseModal('c5')">
+        <div class="cc-title" style="color:#a85c1f;">程序设计基础</div>
+        <div class="cc-meta">13:30-15:00 刘佳</div>
+        <div class="cc-meta">机房A</div>
+      </div></div></div><div class="week-day-col "><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-events"><div class="course-card " style="top:112px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#7c4dff;background:#efe7ff;" onclick="openCourseModal('c6')">
+        <div class="cc-title" style="color:#5a2fd6;">中国近代史</div>
+        <div class="cc-meta">09:00-10:30 吴寅</div>
+        <div class="cc-meta">3号楼402</div>
+      </div><div class="course-card " style="top:392px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#e8439a;background:#fde7f2;" onclick="openCourseModal('c7')">
+        <div class="cc-title" style="color:#a82a6e;">体育课</div>
+        <div class="cc-meta">14:00-15:30 潘思彤</div>
+        <div class="cc-meta">体育馆</div>
+      </div></div></div><div class="week-day-col "><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-events"><div class="course-card " style="top:56px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#e8833a;background:#fdf0e3;" onclick="openCourseModal('c8')">
+        <div class="cc-title" style="color:#a85c1f;">数据结构</div>
+        <div class="cc-meta">08:00-09:30 刘佳</div>
+        <div class="cc-meta">机房B</div>
+      </div><div class="course-card " style="top:168px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#3b5bdb;background:#eef1fd;" onclick="openCourseModal('c9')">
+        <div class="cc-title" style="color:#2b44a8;">概率论</div>
+        <div class="cc-meta">10:00-11:30 钱潇文</div>
+        <div class="cc-meta">1号楼301</div>
+      </div></div></div><div class="week-day-col "><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-events"><div class="course-card " style="top:336px;height:82px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#e5484d;background:#fde8e9;" onclick="openCourseModal('c10')">
+        <div class="cc-title" style="color:#a82a2e;">计算机网络</div>
+        <div class="cc-meta">13:00-14:30 老师7</div>
+        <div class="cc-meta">机房A</div>
+      </div><div class="course-card " style="top:448px;height:110px;left:calc(0% + 1px);width:calc(100% - 4px);
+        border-left-color:#4a6cf7;background:#e8edfd;" onclick="openCourseModal('c11')">
+        <div class="cc-title" style="color:#2c44b0;">学术讲座</div>
+        <div class="cc-meta">15:00-17:00 老师8</div>
+        <div class="cc-meta">报告厅</div>
+      </div></div></div><div class="week-day-col today"><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-events"></div></div><div class="week-day-col "><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-hour-cell"></div><div class="week-events"></div></div></div></div></div></div>
+      </div>
+      <!-- 老师页 -->
+      <div class="page" id="page-teachers">
+        <div class="teachers-page" id="teachersContainer"></div>
+      </div>
+      <!-- 设置页 -->
+      <div class="page" id="page-settings">
+        <div class="teachers-page" id="settingsContainer"></div>
+      </div>
+      <!-- 签到统计页 -->
+      <div class="page" id="page-attendance">
+        <div class="teachers-page" id="attendanceContainer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 老师编辑弹窗 ============ -->
+<div class="modal-overlay" id="teacherModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">编辑老师信息</div>
+      <button class="modal-close" onclick="closeTeacherModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editTeacherId" value="">
+      <div class="form-group">
+        <label>老师姓名<span class="required">*</span></label>
+        <input type="text" id="editTeacherName" placeholder="请输入老师姓名">
+      </div>
+      <div class="form-group">
+        <label>登录账号</label>
+        <input type="text" id="editTeacherUsername" disabled style="background:#f5f6fa;color:var(--text-muted);">
+      </div>
+      <div class="form-group">
+        <label>颜色标签</label>
+        <div id="editTeacherColorPicker" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeTeacherModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTeacher()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 课程弹窗 ============ -->
+<div class="modal-overlay" id="courseModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">新建课程</div>
+      <button class="modal-close" onclick="closeCourseModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="courseId" value="">
+      <div class="form-group">
+        <label>课程名称<span class="required">*</span></label>
+        <input type="text" id="courseName" placeholder="请输入课程名称">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>日期<span class="required">*</span></label>
+          <input type="date" id="courseDate" onchange="updateTimezonePreview()">
+        </div>
+        <div class="form-group">
+          <label>授课老师<span class="required">*</span></label>
+          <select id="courseTeacher" onchange="handleTeacherChange()"></select>
+          <div id="guestTeacherContainer" style="display:none;margin-top:8px;">
+            <input type="text" id="guestTeacherName" placeholder="请输入兼职老师姓名" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;font-size:14px;">
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>开始时间<span class="required">*</span> <button type="button" id="startModeToggle" class="time-mode-btn" onclick="toggleTimeMode()">切换为输入</button></label>
+          <select id="courseStart" class="time-select" onchange="updateTimezonePreview()"></select>
+          <input type="time" id="courseStartInput" class="time-input" style="display:none;" oninput="updateTimezonePreview()">
+        </div>
+        <div class="form-group">
+          <label>结束时间<span class="required">*</span></label>
+          <select id="courseEnd" class="time-select" onchange="updateTimezonePreview()"></select>
+          <input type="time" id="courseEndInput" class="time-input" style="display:none;" oninput="updateTimezonePreview()">
+        </div>
+      </div>
+      <div class="form-group" id="timezoneGroup">
+        <label>排课时区（选择你输入时间所属的时区）</label>
+        <select id="courseTimezone" onchange="updateTimezonePreview()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;font-size:14px;">
+        </select>
+        <div id="timezonePreview" style="display:none;margin-top:8px;padding:10px 12px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;font-size:13px;"></div>
+      </div>
+      <div class="form-group">
+        <label>地点</label>
+        <input type="text" id="courseLocation" placeholder="如：1号教学楼301教室">
+      </div>
+      <div class="form-group">
+        <label>描述</label>
+        <textarea id="courseDesc" rows="3" placeholder="课程描述（选填）" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;resize:vertical;"></textarea>
+      </div>
+      <div class="form-group" id="repeatGroup">
+        <label>重复方式</label>
+        <select id="courseRepeat" onchange="onRepeatChange()">
+          <option value="none">仅一次</option>
+          <option value="weekly">每周重复</option>
+          <option value="biweekly">隔周一次</option>
+          <option value="weekly-weekdays">按星期几重复</option>
+        </select>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="repeatHint">不重复，仅创建单次课程</div>
+        <div id="repeatEndDateGroup" style="display:none;margin-top:8px;">
+          <label style="font-size:13px;font-weight:500;color:var(--text-secondary);">重复截止日期<span class="required">*</span></label>
+          <input type="date" id="repeatEndDate" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;font-size:14px;margin-top:4px;">
+        </div>
+        <div id="weekdayPicker" style="display:none;margin-top:8px;flex-wrap:wrap;gap:6px;">
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:4px;"><input type="checkbox" value="1" style="width:auto;"> 周一</label>
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:4px;"><input type="checkbox" value="2" style="width:auto;"> 周二</label>
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:4px;"><input type="checkbox" value="3" style="width:auto;"> 周三</label>
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:4px;"><input type="checkbox" value="4" style="width:auto;"> 周四</label>
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:4px;"><input type="checkbox" value="5" style="width:auto;"> 周五</label>
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:4px;"><input type="checkbox" value="6" style="width:auto;"> 周六</label>
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:4px;"><input type="checkbox" value="0" style="width:auto;"> 周日</label>
+        </div>
+      </div>
+      <div class="form-group" id="studentGroup">
+        <label>关联学生</label>
+        <div style="position:relative;" id="studentSearchWrapper">
+          <input type="text" id="studentSearch" placeholder="输入姓名搜索学生..." autocomplete="off"
+            oninput="filterStudentResults()" onfocus="showStudentResults()" onblur="setTimeout(()=>hideStudentResults(),200)"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;">
+        </div>
+        <div id="studentSearchResults" style="display:none;border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 2px 8px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;z-index:100;background:#fff;margin-top:2px;"></div>
+        <div id="selectedStudentsTags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;min-height:8px;"></div>
+      </div>
+      <div class="form-group">
+        <div class="color-label-row">
+          颜色标签（自动绑定授课老师）
+          <span class="color-preview-dot" id="colorPreview" style="background:#e03131;"></span>
+        </div>
+      </div>
+      <div class="form-group" id="statusGroup" style="display:none;">
+        <label>课程状态</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-sm" id="statusNormalBtn" onclick="setCourseStatus('normal')"
+            style="flex:1;border-color:#30a46c;color:#30a46c;">正常</button>
+          <button type="button" class="btn btn-sm" id="statusCancelledBtn" onclick="setCourseStatus('cancelled')"
+            style="flex:1;border-color:#9097a8;color:#9097a8;">已取消</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="deleteCourseBtn" style="margin-right:auto;display:none;" onclick="deleteCurrentCourse()">删除课程</button>
+      <button class="btn" onclick="closeCourseModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveCourse()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 删除重复课程选项对话框 -->
+<div class="modal-overlay" id="deleteRepeatModal" style="display:none;z-index:600;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3 id="deleteRepeatTitle">删除重复排课</h3>
+      <button class="btn btn-sm" onclick="closeDeleteRepeatModal()">×</button>
+    </div>
+    <div class="modal-body" style="padding:20px;">
+      <p style="margin-bottom:16px;color:#555;">这是重复排课的课程，请选择删除范围：</p>
+      <div id="deleteRepeatOptions" style="display:flex;flex-direction:column;gap:10px;">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   排课平台 - 多人共享版
+   ============================================================ */
+
+/* ---------- 常量配置 ---------- */
+const DAY_START = 7;   // 日视图起始小时
+const DAY_END = 22;    // 日视图结束小时
+const HOUR_HEIGHT = 56; // 每小时像素高度
+
+/* ---------- 时区配置 ---------- */
+const COMMON_TIMEZONES = [
+  { id: 'Asia/Shanghai',       label: '中国 (UTC+8)' },
+  { id: 'America/New_York',    label: '美国东部-纽约 (UTC-5/-4)' },
+  { id: 'America/Chicago',    label: '美国中部-芝加哥 (UTC-6/-5)' },
+  { id: 'America/Denver',     label: '美国山地-丹佛 (UTC-7/-6)' },
+  { id: 'America/Los_Angeles', label: '美国西部-洛杉矶 (UTC-8/-7)' },
+  { id: 'America/Anchorage',  label: '美国阿拉斯加 (UTC-9/-8)' },
+  { id: 'America/Toronto',    label: '加拿大东部-多伦多 (UTC-5/-4)' },
+  { id: 'America/Vancouver',  label: '加拿大西部-温哥华 (UTC-8/-7)' },
+  { id: 'Europe/London',      label: '英国-伦敦 (UTC+0/+1)' },
+  { id: 'Europe/Paris',      label: '法国-巴黎 (UTC+1/+2)' },
+  { id: 'Europe/Berlin',     label: '德国-柏林 (UTC+1/+2)' },
+  { id: 'Europe/Moscow',     label: '俄罗斯-莫斯科 (UTC+3)' },
+  { id: 'Asia/Tokyo',        label: '日本-东京 (UTC+9)' },
+  { id: 'Asia/Seoul',        label: '韩国-首尔 (UTC+9)' },
+  { id: 'Asia/Singapore',    label: '新加坡 (UTC+8)' },
+  { id: 'Asia/Hong_Kong',    label: '中国香港 (UTC+8)' },
+  { id: 'Asia/Taipei',       label: '中国台北 (UTC+8)' },
+  { id: 'Asia/Bangkok',      label: '泰国-曼谷 (UTC+7)' },
+  { id: 'Asia/Dubai',        label: '阿联酋-迪拜 (UTC+4)' },
+  { id: 'Australia/Sydney',  label: '澳大利亚-悉尼 (UTC+10/+11)' },
+  { id: 'Australia/Melbourne',label: '澳大利亚-墨尔本 (UTC+10/+11)' },
+  { id: 'Pacific/Auckland',  label: '新西兰-奥克兰 (UTC+12/+13)' },
+];
+
+/* 通用时区转换：将 sourceTz 时区的 dateStr+timeStr 转换为 targetTz 时区的日期+时间 */
+function convertTimezone(dateStr, timeStr, sourceTz, targetTz) {
+  if (sourceTz === targetTz) return { date: dateStr, time: timeStr };
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [h, min] = timeStr.split(':').map(Number);
+    // 先把 sourceTz 的本地时间转成 UTC 毫秒
+    // Intl.DateTimeFormat 可以给出 sourceTz 当前的 UTC offset
+    const sourceDate = new Date(Date.UTC(y, m - 1, d, h, min));
+    // 获取 sourceTz 在该日期的 UTC offset（分钟）
+    const srcOffset = getTzOffsetMinutes(sourceDate, sourceTz);
+    // 减去 source offset 得到真正的 UTC 时间
+    const utcMs = sourceDate.getTime() - srcOffset * 60000;
+    const utcDate = new Date(utcMs);
+    // 获取 targetTz 的 UTC offset
+    const tgtOffset = getTzOffsetMinutes(utcDate, targetTz);
+    // 加上 target offset 得到 target 本地时间
+    const tgtMs = utcMs + tgtOffset * 60000;
+    const tgtDate = new Date(tgtMs);
+    return {
+      date: tgtDate.getFullYear() + '-' + String(tgtDate.getMonth() + 1).padStart(2, '0') + '-' + String(tgtDate.getDate()).padStart(2, '0'),
+      time: String(tgtDate.getHours()).padStart(2, '0') + ':' + String(tgtDate.getMinutes()).padStart(2, '0')
+    };
+  } catch (e) {
+    return { date: dateStr, time: timeStr };
+  }
+}
+
+/* 获取某时区在指定日期的 UTC offset（分钟），考虑夏令时 */
+function getTzOffsetMinutes(date, tz) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      timeZoneName: 'shortOffset'
+    }).formatToParts(date);
+    const offsetPart = parts.find(p => p.type === 'timeZoneName');
+    if (offsetPart) {
+      // 格式如 GMT+8, GMT-5, GMT
+      const val = offsetPart.value.replace('GMT', '');
+      if (val === '' || val === 'Z') return 0;
+      const sign = val.startsWith('-') ? -1 : 1;
+      const numStr = val.replace(/[+-]/, '');
+      const [h, m] = numStr.split(':').map(Number);
+      return sign * (h * 60 + (m || 0));
+    }
+  } catch (e) {}
+  // 回退：用 longOffset
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'longOffset'
+    }).formatToParts(date);
+    const offsetPart = parts.find(p => p.type === 'timeZoneName');
+    if (offsetPart) {
+      const val = offsetPart.value.replace('GMT', '').replace('UTC', '');
+      if (val === '' || val === 'Z') return 0;
+      const sign = val.startsWith('-') ? -1 : 1;
+      const numStr = val.replace(/[+-]/, '');
+      const [h, m] = numStr.split(':').map(Number);
+      return sign * (h * 60 + (m || 0));
+    }
+  } catch (e) {}
+  return 0;
+}
+
+/* 将北京时间(UTC+8)的日期+时间转换为目标时区的日期+时间（兼容旧调用） */
+function convertBeijingToTimezone(dateStr, timeStr, targetTz) {
+  return convertTimezone(dateStr, timeStr, 'Asia/Shanghai', targetTz);
+}
+
+/* 获取时区的短名称（如 EDT、GMT+8） */
+function getTimezoneShortName(tz) {
+  if (!tz || tz === 'Asia/Shanghai') return '北京时间';
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'short'
+    }).formatToParts(new Date());
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    return tzPart ? tzPart.value : tz;
+  } catch (e) {
+    return tz;
+  }
+}
+
+/* 获取时区的 UTC 偏移量标签（如 UTC+8、UTC-4） */
+function getTimezoneOffset(tz) {
+  if (!tz || tz === 'Asia/Shanghai') return 'UTC+8';
+  try {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'longOffset'
+    }).formatToParts(now);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    if (tzPart) return tzPart.value.replace('GMT', 'UTC');
+    return '';
+  } catch (e) {
+    return '';
+  }
+}
+
+/* 获取时区的友好名称 */
+function getTimezoneLabel(tz) {
+  if (!tz) return '中国 (UTC+8)';
+  const found = COMMON_TIMEZONES.find(t => t.id === tz);
+  if (found) return found.label;
+  return tz;
+}
+
+/* 获取学生时区，默认中国 */
+function getStudentTimezone(studentId) {
+  const s = DB.students.find(x => x.id === studentId);
+  return s && s.timezone ? s.timezone : 'Asia/Shanghai';
+}
+
+/* 判断学生是否在海外（非中国时区） */
+function isOverseasStudent(studentId) {
+  const tz = getStudentTimezone(studentId);
+  return tz && tz !== 'Asia/Shanghai';
+}
+
+// 颜色方案 — 10种高区分度颜色 + 兼职灰
+const COLORS = [
+  { name: '红色',   value: '#e03131', bg: '#fde8e8', text: '#c92a2a' },
+  { name: '橙色',   value: '#f76707', bg: '#fff0e6', text: '#d9480f' },
+  { name: '金色',   value: '#e8a317', bg: '#fff9db', text: '#e67700' },
+  { name: '绿色',   value: '#2f9e44', bg: '#ebfbee', text: '#2b8a3e' },
+  { name: '青绿',   value: '#0ca678', bg: '#e6fcf5', text: '#087f5b' },
+  { name: '青色',   value: '#1098ad', bg: '#e3fafc', text: '#0b7285' },
+  { name: '蓝色',   value: '#1c7ed6', bg: '#e7f5ff', text: '#1971c2' },
+  { name: '紫色',   value: '#7048e8', bg: '#f3f0ff', text: '#5f3dc4' },
+  { name: '玫红',   value: '#c2255c', bg: '#ffeaef', text: '#a61e4d' },
+  { name: '棕色',   value: '#8b5a2b', bg: '#faf0e6', text: '#7c4a1e' },
+  { name: '兼职藏青', value: '#1c2d5a', bg: '#eef1f8', text: '#15233d' },
+];
+const COLOR_BY_DEFAULT = COLORS[0].value;
+
+// 老师颜色 — 与后端一致（30种）
+const TEACHER_COLORS = ['#e03131','#f76707','#e8a317','#2f9e44','#0ca678','#1098ad','#1c7ed6','#7048e8','#c2255c','#8b5a2b','#d6336c','#e8590c','#f08c00','#099268','#087f5b','#0c8599','#1864ab','#6741d9','#ae3ec9','#5c940d','#d9480f','#fcc419','#94d82d','#22b8cf','#339af0','#5c7cfa','#845ef7','#f06595','#ffa94d','#74c0fc'];
+// 兼职老师统一藏青色
+const PART_TIME_COLOR = '#1c2d5a';
+
+/* ---------- 数据层（API + Socket.io） ---------- */
+let DB = { teachers: [], courses: [] };
+let currentUser = null;
+let currentDate = new Date();
+let currentView = 'week';
+let currentPage = 'calendar';
+let editingCourseId = null;
+let selectedColor = COLOR_BY_DEFAULT;
+let socket = null;
+
+// API 调用封装
+async function api(url, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '请求失败');
+  return data;
+}
+
+async function loadData() {
+  try {
+    const data = await api('/api/data');
+    DB.teachers = data.teachers || [];
+    DB.students = data.students || [];
+    DB.courses = data.courses || [];
+  } catch (e) {
+    console.error('数据加载失败', e);
+  }
+}
+
+function saveData() { /* 服务端自动持久化 */ }
+
+async function checkSession() {
+  try {
+    const user = await api('/api/session');
+    currentUser = user;
+    await loadData();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Socket.io 实时同步
+function initSocket() {
+  socket = io({ transports: ['websocket', 'polling'] });
+
+  socket.on('course_created', (course) => {
+    // 老师角色只接收自己的课程
+    if (currentUser.role === 'teacher') {
+      const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
+      if (!myTeacher || course.teacherId !== myTeacher.id) return;
+    }
+    if (!DB.courses.find(c => c.id === course.id)) {
+      DB.courses.push(course);
+      renderCurrentView();
+      if (currentPage === 'teachers') renderTeachersPage();
+    }
+  });
+
+  socket.on('course_updated', (course) => {
+    // 老师角色只接收自己的课程
+    if (currentUser.role === 'teacher') {
+      const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
+      if (!myTeacher || course.teacherId !== myTeacher.id) return;
+    }
+    const idx = DB.courses.findIndex(c => c.id === course.id);
+    if (idx >= 0) {
+      DB.courses[idx] = course;
+      renderCurrentView();
+      if (currentPage === 'teachers') renderTeachersPage();
+    }
+  });
+
+  socket.on('course_deleted', (data) => {
+    // 老师角色只处理自己课程的删除
+    if (currentUser.role === 'teacher') {
+      const course = DB.courses.find(c => c.id === data.id);
+      if (course) {
+        const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
+        if (!myTeacher || course.teacherId !== myTeacher.id) return;
+      }
+    }
+    DB.courses = DB.courses.filter(c => c.id !== data.id);
+    renderCurrentView();
+    if (currentPage === 'teachers') renderTeachersPage();
+  });
+
+  socket.on('teacher_updated', (teacher) => {
+    const idx = DB.teachers.findIndex(t => t.id === teacher.id);
+    if (idx >= 0) {
+      DB.teachers[idx] = teacher;
+      // 同步更新该老师所有课程的颜色
+      DB.courses.forEach(c => {
+        if (c.teacherId === teacher.id) c.color = teacher.color;
+      });
+      initTeacherFilter();
+      initTeacherSelect();
+      renderCurrentView();
+      if (currentPage === 'teachers') renderTeachersPage();
+      if (currentPage === 'settings') renderSettingsPage();
+      renderUserInfo();
+    }
+  });
+
+  socket.on('data_reset', (data) => {
+    DB.teachers = data.teachers || [];
+    DB.students = data.students || [];
+    DB.courses = data.courses || [];
+    initTeacherFilter();
+    initStudentFilter();
+    initTeacherSelect();
+    renderCurrentView();
+    if (currentPage === 'teachers') renderTeachersPage();
+    if (currentPage === 'settings') renderSettingsPage();
+    refreshUndoStatus();
+  });
+
+  socket.on('student_updated', (student) => {
+    const idx = DB.students.findIndex(s => s.id === student.id);
+    if (idx >= 0) {
+      DB.students[idx] = student;
+    } else {
+      DB.students.push(student);
+    }
+    initStudentFilter();
+    renderCurrentView();
+    if (currentPage === 'settings') renderSettingsPage();
+  });
+
+  socket.on('student_deleted', (data) => {
+    DB.students = DB.students.filter(s => s.id !== data.id);
+    DB.courses.forEach(c => {
+      if (c.studentIds) c.studentIds = c.studentIds.filter(id => id !== data.id);
+    });
+    initStudentFilter();
+    renderCurrentView();
+    if (currentPage === 'settings') renderSettingsPage();
+  });
+}
+
+/* ---------- 撤销/重做 ---------- */
+async function doUndo() {
+  try {
+    const res = await fetch('/api/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' });
+    const data = await res.json();
+    if (data.ok) {
+      DB.teachers = data.teachers || [];
+      DB.students = data.students || [];
+      DB.courses = data.courses || [];
+      initTeacherFilter();
+      initStudentFilter();
+      initTeacherSelect();
+      updateUndoButtons(data.canUndo, data.canRedo);
+      renderCurrentView();
+      if (currentPage === 'teachers') renderTeachersPage();
+      if (currentPage === 'settings') renderSettingsPage();
+    } else {
+      alert(data.error || '撤销失败');
+    }
+  } catch (e) {
+    alert('撤销操作失败: ' + e.message);
+  }
+}
+
+async function doRedo() {
+  try {
+    const res = await fetch('/api/redo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' });
+    const data = await res.json();
+    if (data.ok) {
+      DB.teachers = data.teachers || [];
+      DB.students = data.students || [];
+      DB.courses = data.courses || [];
+      initTeacherFilter();
+      initStudentFilter();
+      initTeacherSelect();
+      updateUndoButtons(data.canUndo, data.canRedo);
+      renderCurrentView();
+      if (currentPage === 'teachers') renderTeachersPage();
+      if (currentPage === 'settings') renderSettingsPage();
+    } else {
+      alert(data.error || '重做失败');
+    }
+  } catch (e) {
+    alert('重做操作失败: ' + e.message);
+  }
+}
+
+function updateUndoButtons(canUndo, canRedo) {
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  if (undoBtn) {
+    undoBtn.disabled = !canUndo;
+    undoBtn.style.opacity = canUndo ? '1' : '0.4';
+    undoBtn.style.cursor = canUndo ? 'pointer' : 'not-allowed';
+  }
+  if (redoBtn) {
+    redoBtn.disabled = !canRedo;
+    redoBtn.style.opacity = canRedo ? '1' : '0.4';
+    redoBtn.style.cursor = canRedo ? 'pointer' : 'not-allowed';
+  }
+}
+
+async function refreshUndoStatus() {
+  try {
+    const res = await fetch('/api/undo-status', { credentials: 'same-origin' });
+    const data = await res.json();
+    updateUndoButtons(data.canUndo, data.canRedo);
+  } catch (e) { /* 静默失败 */ }
+}
+
+function startUndoStatusPolling() {
+  refreshUndoStatus();
+  setInterval(refreshUndoStatus, 2000);
+}
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    doUndo();
+  } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault();
+    doRedo();
+  }
+});
+
+/* ---------- 登录/登出 ---------- */
+async function handleLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+
+  if (!username || !password) {
+    errEl.textContent = '请输入用户名和密码';
+    return;
+  }
+
+  try {
+    const user = await api('/api/login', 'POST', { username, password });
+    currentUser = user;
+    await loadData();
+    initSocket();
+    enterApp();
+  } catch (e) {
+    errEl.textContent = e.message || '登录失败';
+  }
+}
+
+async function handleLogout() {
+  try {
+    await api('/api/logout', 'POST');
+  } catch (e) {}
+  currentUser = null;
+  if (socket) { socket.disconnect(); socket = null; }
+  clearAppState(); // 清除保存的页面状态，避免跨用户串数据
+  document.getElementById('appView').classList.remove('active');
+  document.getElementById('loginView').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').textContent = '';
+}
+
+/* ---------- 页面状态持久化（刷新不丢失） ---------- */
+function saveAppState() {
+  try {
+    const state = {
+      view: currentView,
+      page: currentPage,
+      date: currentDate.toISOString(),
+      teacherFilter: document.getElementById('teacherFilter') ? document.getElementById('teacherFilter').value : '',
+      studentFilter: document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '',
+      termMonthCount: document.getElementById('termMonthCount') ? document.getElementById('termMonthCount').value : '3',
+      customStart: document.getElementById('customStartDate') ? document.getElementById('customStartDate').value : '',
+      customEnd: document.getElementById('customEndDate') ? document.getElementById('customEndDate').value : ''
+    };
+    localStorage.setItem('scheduleAppState', JSON.stringify(state));
+  } catch (e) { /* 忽略 */ }
+}
+
+function loadAppState() {
+  try {
+    const raw = localStorage.getItem('scheduleAppState');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+
+function clearAppState() {
+  try { localStorage.removeItem('scheduleAppState'); } catch (e) {}
+}
+
+function enterApp() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').classList.add('active');
+  renderUserInfo();
+  initTeacherFilter();
+  initStudentFilter();
+  initTeacherSelect();
+  initTimeSelects();
+  applyPermission();
+
+  // 恢复上次的页面状态
+  const saved = loadAppState();
+  if (saved) {
+    // 恢复视图模式
+    if (saved.view) currentView = saved.view;
+    // 恢复日期
+    if (saved.date) {
+      const d = new Date(saved.date);
+      if (!isNaN(d.getTime())) currentDate = d;
+    }
+    // 恢复老师筛选器（老师角色跳过，因为已锁定）
+    if (currentUser.role !== 'teacher' && saved.teacherFilter) {
+      const tf = document.getElementById('teacherFilter');
+      if (tf) tf.value = saved.teacherFilter;
+    }
+    // 恢复学生筛选器
+    if (saved.studentFilter) {
+      const sf = document.getElementById('studentFilter');
+      if (sf) sf.value = saved.studentFilter;
+    }
+    // 恢复学期月数
+    if (saved.termMonthCount) {
+      const tmc = document.getElementById('termMonthCount');
+      if (tmc) tmc.value = saved.termMonthCount;
+    }
+    // 恢复自定义日期
+    if (saved.customStart) {
+      const csd = document.getElementById('customStartDate');
+      if (csd) csd.value = saved.customStart;
+    }
+    if (saved.customEnd) {
+      const ced = document.getElementById('customEndDate');
+      if (ced) ced.value = saved.customEnd;
+    }
+    // 恢复视图UI并渲染
+    switchView(currentView);
+    // 恢复页面（非老师角色才允许切换页面）
+    if (saved.page && currentUser.role !== 'teacher' && saved.page !== 'calendar') {
+      switchPage(saved.page);
+    } else {
+      renderCurrentView();
+    }
+  } else {
+    switchView(currentView);
+    renderCurrentView();
+  }
+  startUndoStatusPolling();
+}
+
+function renderUserInfo() {
+  document.getElementById('userName').textContent = currentUser.name;
+  document.getElementById('userAvatar').textContent = currentUser.name.charAt(0);
+  const tag = document.getElementById('userRoleTag');
+  const roleMap = { admin: ['管理员','admin'], scheduler: ['排课人','scheduler'], teacher: ['老师','teacher'] };
+  const [label, cls] = roleMap[currentUser.role];
+  tag.textContent = label;
+  tag.className = 'role-tag ' + cls;
+  if (currentUser.role === 'teacher') {
+    const teacher = DB.teachers.find(t => t.username === currentUser.username);
+    if (teacher) document.getElementById('userAvatar').style.background = teacher.color;
+  }
+}
+
+/* ---------- 权限控制 ---------- */
+function canEditCourse(course) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'admin') return true;
+  if (currentUser.role === 'scheduler') return true;
+  if (currentUser.role === 'teacher') {
+    const teacher = DB.teachers.find(t => t.username === currentUser.username);
+    return teacher && course.teacherId === teacher.id;
+  }
+  return false;
+}
+
+function canCreateCourse() {
+  // 管理员、排课人、老师都可以创建课程
+  return currentUser && (currentUser.role === 'admin' || currentUser.role === 'scheduler' || currentUser.role === 'teacher');
+}
+
+function applyPermission() {
+  // 老师角色锁定只看自己的课程
+  const filter = document.getElementById('teacherFilter');
+  if (currentUser.role === 'teacher') {
+    const teacher = DB.teachers.find(t => t.username === currentUser.username);
+    if (teacher) filter.value = teacher.id;
+    filter.disabled = true; // 锁定，不允许切换
+  } else {
+    filter.disabled = false;
+  }
+  // 所有角色都可以创建课程
+  const newBtn = document.getElementById('newCourseBtn');
+  if (newBtn) newBtn.style.display = canCreateCourse() ? '' : 'none';
+  // 管理员才能看到设置页
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = currentUser.role === 'admin' ? '' : 'none';
+  });
+}
+
+/* ---------- 日期工具 ---------- */
+function getMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay(); // 0=周日
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function getWeekDates(d) {
+  const monday = getMonday(d);
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(monday);
+    dt.setDate(dt.getDate() + i);
+    dates.push(dt);
+  }
+  return dates;
+}
+
+function isSameDate(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function parseTimeToMinutes(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function formatDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function dateFromStr(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+const WEEK_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
+const MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+/* ---------- 筛选 ---------- */
+function initTeacherFilter() {
+  const sel = document.getElementById('teacherFilter');
+  sel.innerHTML = '<option value="">全部老师</option>';
+  DB.teachers.forEach(t => {
+    // 跳过默认名（老师N）未改名的
+    if (/^老师\d+$/.test(t.name)) return;
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    sel.appendChild(opt);
+  });
+  // 添加兼职老师筛选选项
+  const guestOpt = document.createElement('option');
+  guestOpt.value = 'guest';
+  guestOpt.textContent = '兼职老师';
+  sel.appendChild(guestOpt);
+  // 老师默认锁定自己
+  if (currentUser.role === 'teacher') {
+    const teacher = DB.teachers.find(t => t.username === currentUser.username);
+    if (teacher) sel.value = teacher.id;
+  }
+}
+
+function initStudentFilter() {
+  const sel = document.getElementById('studentFilter');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">全部学生</option>';
+  DB.students.forEach(s => {
+    // 跳过默认名（学生N）未改名的
+    if (/^学生\d+$/.test(s.name)) return;
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+}
+
+let selectedStudentIds = []; // 当前选中关联的学生ID列表
+
+function initStudentList(selectedIds) {
+  selectedStudentIds = (selectedIds || []).slice();
+  const searchInput = document.getElementById('studentSearch');
+  if (searchInput) searchInput.value = '';
+  renderSelectedStudentTags();
+  if (document.activeElement === searchInput) {
+    filterStudentResults();
+  }
+}
+
+function renderSelectedStudentTags() {
+  const container = document.getElementById('selectedStudentsTags');
+  if (!container) return;
+  container.innerHTML = '';
+  selectedStudentIds.forEach(sid => {
+    const student = DB.students.find(s => s.id === sid);
+    if (!student) return;
+    const tag = document.createElement('span');
+    tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#eef1fd;color:#2b44a8;border-radius:12px;font-size:12px;';
+    tag.textContent = student.name;
+    const removeBtn = document.createElement('span');
+    removeBtn.textContent = '×';
+    removeBtn.style.cssText = 'cursor:pointer;font-weight:bold;margin-left:2px;';
+    removeBtn.onclick = function() {
+      selectedStudentIds = selectedStudentIds.filter(id => id !== sid);
+      renderSelectedStudentTags();
+      filterStudentResults();
+    };
+    tag.appendChild(removeBtn);
+    container.appendChild(tag);
+  });
+}
+
+function showStudentResults() {
+  filterStudentResults();
+  document.getElementById('studentSearchResults').style.display = '';
+}
+
+function hideStudentResults() {
+  document.getElementById('studentSearchResults').style.display = 'none';
+}
+
+function filterStudentResults() {
+  const results = document.getElementById('studentSearchResults');
+  const query = (document.getElementById('studentSearch').value || '').trim().toLowerCase();
+  let list = DB.students.filter(s => !selectedStudentIds.includes(s.id));
+  // 跳过默认名（学生N）未改名的
+  list = list.filter(s => !/^学生\d+$/.test(s.name));
+  if (query) {
+    list = list.filter(s => s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query));
+  }
+  // 最多显示50条
+  list = list.slice(0, 50);
+  results.innerHTML = '';
+  if (list.length === 0) {
+    results.innerHTML = '<div style="padding:8px 12px;color:var(--text-muted);font-size:13px;">无匹配学生</div>';
+  } else {
+    list.forEach(s => {
+      const item = document.createElement('div');
+      item.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border-light);';
+      item.textContent = s.name;
+      item.onmousedown = function(e) {
+        e.preventDefault();
+        selectedStudentIds.push(s.id);
+        document.getElementById('studentSearch').value = '';
+        renderSelectedStudentTags();
+        filterStudentResults();
+      };
+      item.onmouseover = function() { this.style.background = '#eef1fd'; };
+      item.onmouseout = function() { this.style.background = ''; };
+      results.appendChild(item);
+    });
+  }
+  results.style.display = '';
+}
+
+function onRepeatChange() {
+  const val = document.getElementById('courseRepeat').value;
+  const picker = document.getElementById('weekdayPicker');
+  const hint = document.getElementById('repeatHint');
+  const endDateGroup = document.getElementById('repeatEndDateGroup');
+  const endDateInput = document.getElementById('repeatEndDate');
+  if (val === 'none') {
+    picker.style.display = 'none';
+    endDateGroup.style.display = 'none';
+    hint.textContent = '不重复，仅创建单次课程';
+  } else if (val === 'weekly-weekdays') {
+    picker.style.display = 'flex';
+    endDateGroup.style.display = '';
+    hint.textContent = '选择星期几，在截止日期前自动生成所有对应日期的课程';
+    if (!endDateInput.value) {
+      const d = new Date(); d.setMonth(d.getMonth() + 4);
+      endDateInput.value = formatDateStr(d);
+    }
+  } else {
+    picker.style.display = 'none';
+    endDateGroup.style.display = '';
+    hint.textContent = val === 'weekly' ? '每周同一天重复，直到截止日期' : '隔周一次，直到截止日期';
+    if (!endDateInput.value) {
+      const d = new Date(); d.setMonth(d.getMonth() + 4);
+      endDateInput.value = formatDateStr(d);
+    }
+  }
+}
+
+function getSelectedWeekdays() {
+  const checks = document.querySelectorAll('#weekdayPicker input[type=checkbox]:checked');
+  return Array.from(checks).map(c => parseInt(c.value));
+}
+
+function getSelectedStudentIds() {
+  return selectedStudentIds.slice();
+}
+
+/* 初始化时间下拉选项（5分钟间隔） */
+function initTimeSelects() {
+  const startSel = document.getElementById('courseStart');
+  const endSel = document.getElementById('courseEnd');
+  startSel.innerHTML = '';
+  endSel.innerHTML = '';
+  for (let h = 0; h <= 23; h++) {
+    for (let m = 0; m < 60; m += 5) {
+      const val = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      startSel.innerHTML += `<option value="${val}">${val}</option>`;
+      endSel.innerHTML += `<option value="${val}">${val}</option>`;
+    }
+  }
+  // 初始化时区下拉
+  const tzSel = document.getElementById('courseTimezone');
+  if (tzSel && !tzSel.options.length) {
+    COMMON_TIMEZONES.forEach(t => {
+      tzSel.innerHTML += `<option value="${t.id}">${t.label}</option>`;
+    });
+  }
+}
+
+/* 排课时实时显示双时区对应时间 */
+function updateTimezonePreview() {
+  const tzSel = document.getElementById('courseTimezone');
+  const preview = document.getElementById('timezonePreview');
+  if (!tzSel || !preview) return;
+  
+  const tz = tzSel.value || 'Asia/Shanghai';
+  const date = document.getElementById('courseDate').value;
+  const start = getTimeValue('courseStart');
+  const end = getTimeValue('courseEnd');
+  
+  if (!date || !start || !end) {
+    preview.style.display = 'none';
+    return;
+  }
+  
+  // 计算另一个时区的时间
+  let beijingStart, beijingEnd, localStart, localEnd;
+  if (tz === 'Asia/Shanghai') {
+    // 排课时区就是北京时间，无需转换
+    beijingStart = { date, time: start };
+    beijingEnd = { date, time: end };
+    localStart = beijingStart;
+    localEnd = beijingEnd;
+  } else {
+    // 排课时区非北京：输入时间在 tz 时区，转换出北京时间
+    beijingStart = convertTimezone(date, start, tz, 'Asia/Shanghai');
+    beijingEnd = convertTimezone(date, end, tz, 'Asia/Shanghai');
+    localStart = { date, time: start };
+    localEnd = { date, time: end };
+  }
+  
+  const tzName = getTimezoneShortName(tz);
+  const tzOffset = getTimezoneOffset(tz);
+  const bjName = '北京时间';
+  const bjOffset = 'UTC+8';
+  
+  // 判断日期差异
+  const bjDateDiff = beijingStart.date !== localStart.date;
+  
+  let html = `<div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:160px;border-left:3px solid #1c7ed6;padding-left:10px;">
+      <div style="font-weight:600;color:#1c7ed6;margin-bottom:2px;">老师时间（${bjName}）</div>
+      <div style="font-size:13px;">${beijingStart.date} ${beijingStart.time} - ${beijingEnd.time}</div>
+    </div>
+    <div style="flex:1;min-width:160px;border-left:3px solid #e8590c;padding-left:10px;">
+      <div style="font-weight:600;color:#e8590c;margin-bottom:2px;">排课时区（${escapeHtml(tzName)} ${escapeHtml(tzOffset)}）</div>
+      <div style="font-size:13px;">${localStart.date} ${localStart.time} - ${localEnd.time}</div>
+    </div>
+  </div>`;
+  
+  if (bjDateDiff) {
+    const diff = beijingStart.date > localStart.date ? '老师时间为次日' : '老师时间为前日';
+    html += `<div style="margin-top:6px;color:#d9480f;font-size:12px;font-weight:600;">注意：${diff}</div>`;
+  }
+  
+  preview.innerHTML = html;
+  preview.style.display = 'block';
+}
+
+/* 时间输入/滚动模式切换 */
+let timeMode = 'select'; // 'select' 或 'input'
+function toggleTimeMode() {
+  timeMode = timeMode === 'select' ? 'input' : 'select';
+  const btn = document.getElementById('startModeToggle');
+  const selects = document.querySelectorAll('.time-select');
+  const inputs = document.querySelectorAll('.time-input');
+  if (timeMode === 'input') {
+    // 同步当前select值到input
+    const sv = document.getElementById('courseStart').value;
+    const ev = document.getElementById('courseEnd').value;
+    if (sv) document.getElementById('courseStartInput').value = sv;
+    if (ev) document.getElementById('courseEndInput').value = ev;
+    selects.forEach(s => s.style.display = 'none');
+    inputs.forEach(i => i.style.display = '');
+    btn.textContent = '切换为滚动';
+  } else {
+    // 同步当前input值到select
+    const sv = document.getElementById('courseStartInput').value;
+    const ev = document.getElementById('courseEndInput').value;
+    if (sv) document.getElementById('courseStart').value = sv;
+    if (ev) document.getElementById('courseEnd').value = ev;
+    selects.forEach(s => s.style.display = '');
+    inputs.forEach(i => i.style.display = 'none');
+    btn.textContent = '切换为输入';
+  }
+}
+
+/* 获取当前时间值（兼容两种模式） */
+function getTimeValue(id) {
+  if (timeMode === 'input') {
+    return document.getElementById(id + 'Input').value;
+  }
+  return document.getElementById(id).value;
+}
+
+/* 设置时间值（兼容两种模式） */
+function setTimeValue(id, val) {
+  const sel = document.getElementById(id);
+  const inp = document.getElementById(id + 'Input');
+  if (sel) sel.value = val;
+  if (inp) inp.value = val;
+}
+
+function initTeacherSelect() {
+  const sel = document.getElementById('courseTeacher');
+  sel.innerHTML = '';
+  DB.teachers.forEach(t => {
+    // 跳过默认名（老师N）未改名的
+    if (/^老师\d+$/.test(t.name)) return;
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    sel.appendChild(opt);
+  });
+  // 添加兼职老师选项
+  const guestOpt = document.createElement('option');
+  guestOpt.value = 'guest';
+  guestOpt.textContent = '兼职老师（手动输入）';
+  sel.appendChild(guestOpt);
+  // 确保 onchange 事件已绑定（不依赖 HTML onchange 属性）
+  sel.onchange = handleTeacherChange;
+}
+
+function getFilteredCourses() {
+  const teacherFilter = document.getElementById('teacherFilter').value;
+  const studentFilter = document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '';
+  let list = DB.courses.slice();
+  // 老师角色强制只看自己的课程
+  if (currentUser && currentUser.role === 'teacher') {
+    const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
+    if (myTeacher) list = list.filter(c => c.teacherId === myTeacher.id);
+  } else if (teacherFilter) {
+    list = list.filter(c => c.teacherId === teacherFilter);
+  }
+  if (studentFilter) list = list.filter(c => c.studentIds && c.studentIds.includes(studentFilter));
+  return list;
+}
+
+/* ---------- 视图导航 ---------- */
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.view-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === view);
+  });
+  const termSel = document.getElementById('termMonthCount');
+  if (termSel) termSel.style.display = view === 'term' ? '' : 'none';
+  const customPicker = document.getElementById('customRangePicker');
+  if (customPicker) customPicker.style.display = view === 'custom' ? 'flex' : 'none';
+  // 初始化自定义日期默认值
+  if (view === 'custom') {
+    const sd = document.getElementById('customStartDate');
+    const ed = document.getElementById('customEndDate');
+    if (sd && !sd.value) sd.value = formatDateStr(new Date());
+    if (ed && !ed.value) ed.value = formatDateStr(new Date(Date.now() + 30*24*60*60*1000));
+  }
+  renderCurrentView();
+  saveAppState();
+}
+
+function navigateDate(dir) {
+  if (currentView === 'custom') return; // 自定义模式不支持前后导航
+  const d = new Date(currentDate);
+  if (currentView === 'day') d.setDate(d.getDate() + dir);
+  else if (currentView === 'week') d.setDate(d.getDate() + dir * 7);
+  else if (currentView === 'month') d.setMonth(d.getMonth() + dir);
+  else if (currentView === 'term') {
+    const sel = document.getElementById('termMonthCount');
+    const mc = sel ? parseInt(sel.value) : 3;
+    d.setMonth(d.getMonth() + dir * mc);
+  }
+  currentDate = d;
+  renderCurrentView();
+  saveAppState();
+}
+
+function goToday() {
+  currentDate = new Date();
+  renderCurrentView();
+  saveAppState();
+}
+
+function switchPage(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.page === page);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  var titleMap = { calendar: '日历排课', teachers: '老师管理', settings: '设置', attendance: '签到统计' };
+  document.getElementById('topbarTitle').textContent = titleMap[page] || '';
+  document.getElementById('calendarToolbar').style.display = page === 'calendar' ? '' : 'none';
+  if (page === 'teachers') renderTeachersPage();
+  if (page === 'settings') renderSettingsPage();
+  if (page === 'attendance') renderAttendancePage();
+  if (page === 'calendar') renderCurrentView();
+  toggleSidebar(false);
+  saveAppState();
+}
+
+/* ---------- 渲染主入口 ---------- */
+function renderCurrentView() {
+  updateDateLabel();
+  // 学生筛选时使用专属表格视图
+  const studentFilter = document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '';
+  if (studentFilter) {
+    renderStudentSchedule();
+    return;
+  }
+  if (currentView === 'day') renderDayView();
+  else if (currentView === 'week') renderWeekView();
+  else if (currentView === 'month') renderMonthView();
+  else if (currentView === 'term') renderTermView();
+  else if (currentView === 'custom') renderCustomRangeView();
+}
+
+function updateDateLabel() {
+  const el = document.getElementById('dateLabel');
+  const studentFilter = document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '';
+  if (studentFilter) {
+    const student = DB.students.find(s => s.id === studentFilter);
+    const sName = student ? student.name : '';
+    if (currentView === 'day') {
+      el.textContent = sName + ' · ' + currentDate.getFullYear() + '年' + (currentDate.getMonth()+1) + '月' + currentDate.getDate() + '日';
+    } else if (currentView === 'week') {
+      const dates = getWeekDates(currentDate);
+      const s = dates[0], e = dates[6];
+      el.textContent = sName + ' · ' + (s.getMonth()+1) + '月' + s.getDate() + '日 - ' + (e.getMonth()+1) + '月' + e.getDate() + '日';
+    } else if (currentView === 'term') {
+      const sel = document.getElementById('termMonthCount');
+      const mc = sel ? parseInt(sel.value) : 3;
+      const sy = currentDate.getFullYear();
+      const sm = currentDate.getMonth();
+      el.textContent = sName + ' · ' + sy + '年' + (sm+1) + '月-' + (sm+mc) + '月';
+    } else if (currentView === 'custom') {
+      const sd = document.getElementById('customStartDate');
+      const ed = document.getElementById('customEndDate');
+      const sv = sd ? sd.value : '';
+      const ev = ed ? ed.value : '';
+      el.textContent = sName + ' · ' + (sv || '?') + ' 至 ' + (ev || '?');
+    } else {
+      el.textContent = sName + ' · ' + currentDate.getFullYear() + '年' + (currentDate.getMonth()+1) + '月';
+    }
+    return;
+  }
+  if (currentView === 'day') {
+    el.textContent = `${currentDate.getFullYear()}年${currentDate.getMonth()+1}月${currentDate.getDate()}日`;
+  } else if (currentView === 'week') {
+    const dates = getWeekDates(currentDate);
+    const s = dates[0], e = dates[6];
+    el.textContent = `${s.getMonth()+1}月${s.getDate()}日 - ${e.getMonth()+1}月${e.getDate()}日`;
+  } else if (currentView === 'month') {
+    el.textContent = `${currentDate.getFullYear()}年${currentDate.getMonth()+1}月`;
+  } else if (currentView === 'term') {
+    const sel = document.getElementById('termMonthCount');
+    const mc = sel ? parseInt(sel.value) : 3;
+    const sy = currentDate.getFullYear();
+    const sm = currentDate.getMonth();
+    const end = new Date(sy, sm + mc - 1, 1);
+    el.textContent = `${sy}年${sm+1}月 - ${end.getFullYear()}年${end.getMonth()+1}月`;
+  } else if (currentView === 'custom') {
+    const sd = document.getElementById('customStartDate');
+    const ed = document.getElementById('customEndDate');
+    el.textContent = (sd ? sd.value : '?') + ' 至 ' + (ed ? ed.value : '?');
+  }
+}
+
+/* ---------- 课程卡片样式 ---------- */
+function getColorMeta(colorValue) {
+  return COLORS.find(c => c.value === colorValue) || COLORS[0];
+}
+
+function getTeacherById(id) {
+  return DB.teachers.find(t => t.id === id);
+}
+
+// 获取课程老师显示名（兼职老师用手动输入的名字）
+function getTeacherDisplayName(course) {
+  if (course.teacherId === 'guest') {
+    return course.guestTeacherName || '兼职老师';
+  }
+  const teacher = getTeacherById(course.teacherId);
+  return teacher ? teacher.name : '';
+}
+
+// 将老师全名转为"姓+老师"格式（如"王朝"→"王老师"）
+function getTeacherShortName(course) {
+  let name;
+  if (course.teacherId === 'guest') {
+    name = course.guestTeacherName || '兼职老师';
+  } else {
+    const teacher = getTeacherById(course.teacherId);
+    name = teacher ? teacher.name : '';
+  }
+  if (!name) return '';
+  if (name.startsWith('老师')) return name; // 默认老师名如"老师1"保持不变
+  return name.charAt(0) + '老师';
+}
+
+function getRepeatBadge(course) {
+  if (course.repeatType === 'weekly') return '<span style="font-size:10px;background:rgba(59,91,219,.12);color:#2b44a8;padding:1px 5px;border-radius:3px;margin-left:4px;white-space:nowrap;">每周</span>';
+  if (course.repeatType === 'biweekly') return '<span style="font-size:10px;background:rgba(124,77,255,.12);color:#5b2ad6;padding:1px 5px;border-radius:3px;margin-left:4px;white-space:nowrap;">隔周</span>';
+  if (course.repeatType === 'weekly-weekdays') return '<span style="font-size:10px;background:rgba(48,164,108,.12);color:#1d7a4d;padding:1px 5px;border-radius:3px;margin-left:4px;white-space:nowrap;">固定</span>';
+  return '';
+}
+
+/* ============================================================
+   日视图
+   ============================================================ */
+function renderDayView() {
+  const container = document.getElementById('calendarContainer');
+  const targetDate = new Date(currentDate);
+  const today = new Date();
+  const isToday = isSameDate(targetDate, today);
+
+  const courses = getFilteredCourses().filter(c => isSameDate(dateFromStr(c.date), targetDate));
+  courses.sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
+
+  const totalHours = DAY_END - DAY_START;
+  const gridHeight = totalHours * HOUR_HEIGHT;
+
+  let html = `<div class="day-view-wrap">
+    <div class="day-container">
+      <div class="day-header">
+        <div>
+          <span class="day-title">${targetDate.getMonth()+1}月${targetDate.getDate()}日</span>
+          <span class="day-weekday">${WEEK_NAMES[targetDate.getDay()]} · 共 ${courses.length} 节课</span>
+        </div>
+      </div>
+      <div class="day-body" style="height:${gridHeight}px;">
+        <div class="time-grid">`;
+
+  // 时间轴
+  for (let h = DAY_START; h <= DAY_END; h++) {
+    const top = (h - DAY_START) * HOUR_HEIGHT;
+    html += `<div class="time-label" style="top:${top}px;">${String(h).padStart(2,'0')}:00</div>`;
+    html += `<div class="time-line" style="top:${top}px;"></div>`;
+  }
+  // 半小时虚线
+  for (let h = DAY_START; h < DAY_END; h++) {
+    const top = (h - DAY_START) * HOUR_HEIGHT + HOUR_HEIGHT / 2;
+    html += `<div class="time-line half" style="top:${top}px;"></div>`;
+  }
+
+  // 当前时间线
+  if (isToday) {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    if (nowMin >= DAY_START * 60 && nowMin <= DAY_END * 60) {
+      const top = ((nowMin - DAY_START * 60) / 60) * HOUR_HEIGHT;
+      html += `<div class="now-line" style="top:${top}px;"></div>`;
+    }
+  }
+
+  html += `<div class="day-events">`;
+
+  // 计算课程位置（处理重叠）
+  const placed = [];
+  courses.forEach(c => {
+    const startMin = parseTimeToMinutes(c.startTime);
+    const endMin = parseTimeToMinutes(c.endTime);
+    const top = ((startMin - DAY_START * 60) / 60) * HOUR_HEIGHT;
+    const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
+    // 找重叠列
+    let col = 0;
+    while (true) {
+      const conflict = placed.find(p => p.col === col && !(endMin <= p.startMin || startMin >= p.endMin));
+      if (!conflict) break;
+      col++;
+    }
+    placed.push({ col, startMin, endMin });
+    const widthPct = 100 / (col + 1);
+    const leftPct = col * widthPct;
+    const cmeta = getColorMeta(c.color);
+    const teacher = getTeacherById(c.teacherId);
+    const canEdit = canEditCourse(c);
+    const isCancelled = c.status === 'cancelled';
+    const cardBg = isCancelled ? '#f0f0f3' : cmeta.bg;
+    const cardText = isCancelled ? '#9097a8' : cmeta.text;
+    const cardBorder = isCancelled ? '#c0c4cc' : c.color;
+    html += `<div class="course-card ${height < 40 ? 'compact' : ''}" 
+      style="top:${top}px;height:${height}px;left:${leftPct}%;width:calc(${widthPct}% - 6px);
+      border-left-color:${cardBorder};background:${cardBg};${isCancelled ? 'opacity:0.7;' : ''}"
+      onclick="openCourseModal('${c.id}')" title="${canEdit ? '点击编辑' : '点击查看'}">
+      <div class="cc-title" style="color:${cardText};${isCancelled ? 'text-decoration:line-through;' : ''}">${escapeHtml(c.name)}${isCancelled ? '<span style="font-size:10px;background:#9097a8;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;">取消</span>' : getRepeatBadge(c)}</div>
+      <div class="cc-meta">${c.startTime}-${c.endTime} · ${escapeHtml(getTeacherDisplayName(c))}</div>
+      ${height >= 56 && c.location ? `<div class="cc-meta">${escapeHtml(c.location)}</div>` : ''}
+    </div>`;
+  });
+
+  html += `</div></div></div></div>`;
+  container.innerHTML = html;
+
+  if (courses.length === 0) {
+    // 不额外显示空状态，日视图保持时间轴
+  }
+}
+
+/* ============================================================
+   周视图
+   ============================================================ */
+function renderWeekView() {
+  const container = document.getElementById('calendarContainer');
+  const dates = getWeekDates(currentDate);
+  const today = new Date();
+  const courses = getFilteredCourses();
+  const totalHours = DAY_END - DAY_START;
+  const gridHeight = totalHours * HOUR_HEIGHT;
+
+  let html = `<div class="week-view-wrap">
+    <div class="week-header">
+      <div class="wh-corner"></div>`;
+  dates.forEach(d => {
+    const isToday = isSameDate(d, today);
+    html += `<div class="wh-day ${isToday ? 'today' : ''}">
+      <div class="wd-name">${WEEK_NAMES[d.getDay()]}</div>
+      <div class="wd-num">${d.getDate()}</div>
+    </div>`;
+  });
+  html += `</div><div class="week-body"><div class="week-grid" style="min-height:${gridHeight}px;">`;
+
+  // 时间列
+  html += `<div class="week-time-col">`;
+  for (let h = DAY_START; h < DAY_END; h++) {
+    html += `<div class="week-time-label" style="height:${HOUR_HEIGHT}px;"><span>${String(h).padStart(2,'0')}:00</span></div>`;
+  }
+  html += `</div>`;
+
+  // 7天列
+  dates.forEach(d => {
+    const isToday = isSameDate(d, today);
+    const dateStr = formatDateStr(d);
+    const dayCourses = courses.filter(c => c.date === dateStr);
+    html += `<div class="week-day-col ${isToday ? 'today' : ''}">`;
+    // 小时格子
+    for (let h = DAY_START; h < DAY_END; h++) {
+      html += `<div class="week-hour-cell"></div>`;
+    }
+    // 课程事件层
+    html += `<div class="week-events">`;
+    const placed = [];
+    dayCourses.forEach(c => {
+      const startMin = parseTimeToMinutes(c.startTime);
+      const endMin = parseTimeToMinutes(c.endTime);
+      const top = ((startMin - DAY_START * 60) / 60) * HOUR_HEIGHT;
+      const height = Math.max(18, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
+      let col = 0;
+      while (true) {
+        const conflict = placed.find(p => p.col === col && !(endMin <= p.startMin || startMin >= p.endMin));
+        if (!conflict) break;
+        col++;
+      }
+      placed.push({ col, startMin, endMin });
+      const widthPct = 100 / (col + 1);
+      const leftPct = col * widthPct;
+      const cmeta = getColorMeta(c.color);
+      const teacher = getTeacherById(c.teacherId);
+      const isCancelled = c.status === 'cancelled';
+      const cardBg = isCancelled ? '#f0f0f3' : cmeta.bg;
+      const cardText = isCancelled ? '#9097a8' : cmeta.text;
+      const cardBorder = isCancelled ? '#c0c4cc' : c.color;
+      html += `<div class="course-card ${height < 36 ? 'compact' : ''}"
+        style="top:${top}px;height:${height}px;left:calc(${leftPct}% + 1px);width:calc(${widthPct}% - 4px);
+        border-left-color:${cardBorder};background:${cardBg};${isCancelled ? 'opacity:0.7;' : ''}"
+        onclick="openCourseModal('${c.id}')">
+        <div class="cc-title" style="color:${cardText};${isCancelled ? 'text-decoration:line-through;' : ''}">${escapeHtml(c.name)}${isCancelled ? '<span style="font-size:10px;background:#9097a8;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;">取消</span>' : getRepeatBadge(c)}</div>
+        <div class="cc-meta">${c.startTime}-${c.endTime} ${escapeHtml(getTeacherDisplayName(c))}</div>
+        ${height >= 50 && c.location ? `<div class="cc-meta">${escapeHtml(c.location)}</div>` : ''}
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  html += `</div></div></div>`;
+  container.innerHTML = html;
+}
+
+/* ============================================================
+   月视图
+   ============================================================ */
+function renderMonthView() {
+  const container = document.getElementById('calendarContainer');
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const today = new Date();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startWeekday = firstDay.getDay(); // 0=周日
+  // 让周一为起始
+  const startOffset = startWeekday === 0 ? 6 : startWeekday - 1;
+  const daysInMonth = lastDay.getDate();
+  const prevMonthLast = new Date(year, month, 0).getDate();
+
+  const cells = [];
+  // 上月填充
+  for (let i = startOffset - 1; i >= 0; i--) {
+    cells.push({ date: new Date(year, month - 1, prevMonthLast - i), other: true });
+  }
+  // 本月
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ date: new Date(year, month, d), other: false });
+  }
+  // 下月填充至6行
+  while (cells.length % 7 !== 0 || cells.length < 42) {
+    const last = cells[cells.length - 1].date;
+    cells.push({ date: new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1), other: true });
+    if (cells.length >= 42) break;
+  }
+
+  const courses = getFilteredCourses();
+  const MAX_EVENTS_PER_CELL = 3;
+
+  let html = `<div class="month-view-wrap">
+    <div class="month-weekday-row">
+      ${['周一','周二','周三','周四','周五','周六','周日'].map(w => `<div class="month-weekday">${w}</div>`).join('')}
+    </div>
+    <div class="month-grid">`;
+
+  cells.forEach(cell => {
+    const dateStr = formatDateStr(cell.date);
+    const isToday = isSameDate(cell.date, today);
+    const dayCourses = courses.filter(c => c.date === dateStr)
+      .sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
+    html += `<div class="month-cell ${cell.other ? 'other-month' : ''} ${isToday ? 'today' : ''}">
+      <div class="mc-date">${cell.date.getDate()}</div>`;
+    dayCourses.slice(0, MAX_EVENTS_PER_CELL).forEach(c => {
+      const cmeta = getColorMeta(c.color);
+      const isCancelled = c.status === 'cancelled';
+      const eBg = isCancelled ? '#f0f0f3' : cmeta.bg;
+      const eText = isCancelled ? '#9097a8' : cmeta.text;
+      const eBorder = isCancelled ? '#c0c4cc' : c.color;
+      html += `<div class="month-event" style="border-left-color:${eBorder};background:${eBg};color:${eText};${isCancelled ? 'text-decoration:line-through;opacity:0.7;' : ''}"
+        onclick="event.stopPropagation();openCourseModal('${c.id}')" title="${escapeHtml(c.name)} ${c.startTime}-${c.endTime}">
+        ${c.startTime} ${escapeHtml(c.name)}${isCancelled ? '<span style="font-size:9px;background:#9097a8;color:#fff;padding:0 3px;border-radius:2px;margin-left:2px;">取消</span>' : getRepeatBadge(c)}
+      </div>`;
+    });
+    if (dayCourses.length > MAX_EVENTS_PER_CELL) {
+      html += `<div class="month-more" onclick="showDayDetail('${dateStr}')">+${dayCourses.length - MAX_EVENTS_PER_CELL} 更多</div>`;
+    }
+    html += `</div>`;
+  });
+
+  html += `</div></div>`;
+  container.innerHTML = html;
+}
+
+/* ---------- 学生排课表视图（表格格式） ---------- */
+function renderStudentSchedule() {
+  const container = document.getElementById('calendarContainer');
+  const studentFilter = document.getElementById('studentFilter').value;
+  const student = DB.students.find(s => s.id === studentFilter);
+  const studentName = student ? student.name : '未知学生';
+
+  // 获取该学生的所有课程
+  const allCourses = getFilteredCourses().filter(c => c.studentIds && c.studentIds.includes(studentFilter));
+
+  // 根据当前视图计算日期范围和标题
+  let rangeStart, rangeEnd, titleStr, rangeLabel;
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  if (currentView === 'day') {
+    rangeStart = new Date(currentDate);
+    rangeEnd = new Date(currentDate);
+    titleStr = `学员${escapeHtml(studentName)}${year}年${month+1}月${currentDate.getDate()}日排课表`;
+    rangeLabel = `${year}年${month+1}月${currentDate.getDate()}日`;
+  } else if (currentView === 'week') {
+    const dates = getWeekDates(currentDate);
+    rangeStart = new Date(dates[0]);
+    rangeEnd = new Date(dates[6]);
+    titleStr = `学员${escapeHtml(studentName)}${rangeStart.getMonth()+1}月${rangeStart.getDate()}日-${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日排课表`;
+    rangeLabel = `${rangeStart.getMonth()+1}月${rangeStart.getDate()}日-${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日`;
+  } else if (currentView === 'term') {
+    const sel = document.getElementById('termMonthCount');
+    const mc = sel ? parseInt(sel.value) : 3;
+    rangeStart = new Date(year, month, 1);
+    rangeEnd = new Date(year, month + mc, 0);
+    const startMonthLabel = month + 1;
+    const endMonthLabel = month + mc;
+    if (startMonthLabel === endMonthLabel) {
+      titleStr = `学员${escapeHtml(studentName)}${year}年${startMonthLabel}月排课表`;
+      rangeLabel = `${year}年${startMonthLabel}月`;
+    } else {
+      titleStr = `学员${escapeHtml(studentName)}${year}年${startMonthLabel}月-${endMonthLabel}月排课表`;
+      rangeLabel = `${year}年${startMonthLabel}月-${endMonthLabel}月`;
+    }
+  } else if (currentView === 'custom') {
+    const sd = document.getElementById('customStartDate');
+    const ed = document.getElementById('customEndDate');
+    const sv = sd ? sd.value : '';
+    const ev = ed ? ed.value : '';
+    if (!sv || !ev) {
+      container.innerHTML = '<div style="padding:40px;text-align:center;color:#999;">请选择起止日期</div>';
+      return;
+    }
+    rangeStart = dateFromStr(sv);
+    rangeEnd = dateFromStr(ev);
+    if (rangeStart > rangeEnd) { const tmp = rangeStart; rangeStart = rangeEnd; rangeEnd = tmp; }
+    // 生成标题
+    if (formatDateStr(rangeStart) === formatDateStr(rangeEnd)) {
+      titleStr = `学员${escapeHtml(studentName)}${rangeStart.getFullYear()}年${rangeStart.getMonth()+1}月${rangeStart.getDate()}日排课表`;
+      rangeLabel = `${rangeStart.getFullYear()}年${rangeStart.getMonth()+1}月${rangeStart.getDate()}日`;
+    } else if (rangeStart.getMonth() === rangeEnd.getMonth() && rangeStart.getFullYear() === rangeEnd.getFullYear()) {
+      titleStr = `学员${escapeHtml(studentName)}${rangeStart.getMonth()+1}月${rangeStart.getDate()}日-${rangeEnd.getDate()}日排课表`;
+      rangeLabel = `${rangeStart.getMonth()+1}月${rangeStart.getDate()}日-${rangeEnd.getDate()}日`;
+    } else {
+      titleStr = `学员${escapeHtml(studentName)}${rangeStart.getMonth()+1}月${rangeStart.getDate()}日-${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日排课表`;
+      rangeLabel = `${rangeStart.getMonth()+1}月${rangeStart.getDate()}日-${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日`;
+    }
+  } else {
+    // 月视图（默认）
+    rangeStart = new Date(year, month, 1);
+    rangeEnd = new Date(year, month + 1, 0);
+    titleStr = `学员${escapeHtml(studentName)}${year}年${month+1}月排课表`;
+    rangeLabel = `${year}年${month+1}月`;
+  }
+
+  // 过滤范围内的课程
+  const startStr = formatDateStr(rangeStart);
+  const endStr = formatDateStr(rangeEnd);
+  
+  // 判断是否有跨时区课程（排课时区非北京）
+  const hasCourseTz = allCourses.some(c => c.timezone && c.timezone !== 'Asia/Shanghai' && c.date >= startStr && c.date <= endStr);
+
+  // 按日期分组：课程可能出现在两个日期格子里
+  // - 学生当地日期（课程原始 c.date）
+  // - 老师北京日期（转换后的 bjStart.date，如果跨日）
+  const courseMap = {};
+  allCourses.forEach(c => {
+    if (c.date < startStr || c.date > endStr) {
+      // 课程原始日期不在范围，检查转换后北京日期是否在范围内
+      const courseTz = c.timezone || 'Asia/Shanghai';
+      if (courseTz !== 'Asia/Shanghai') {
+        const bjStart = convertTimezone(c.date, c.startTime, courseTz, 'Asia/Shanghai');
+        if (bjStart.date < startStr || bjStart.date > endStr) return;
+      } else {
+        return;
+      }
+    }
+    const courseTz = c.timezone || 'Asia/Shanghai';
+    if (courseTz !== 'Asia/Shanghai') {
+      // 跨时区课程：放入学生日期格子（显示学生时间）
+      if (!courseMap[c.date]) courseMap[c.date] = [];
+      courseMap[c.date].push({ c, display: 'student' });
+      // 同时放入老师北京日期格子（显示老师时间），如果跨日
+      const bjStart = convertTimezone(c.date, c.startTime, courseTz, 'Asia/Shanghai');
+      if (bjStart.date !== c.date) {
+        if (!courseMap[bjStart.date]) courseMap[bjStart.date] = [];
+        courseMap[bjStart.date].push({ c, display: 'teacher' });
+      } else {
+        // 不跨日：在同一个格子里显示双时区
+        // 已经在上面 push 了 student，这里额外 push teacher
+        courseMap[c.date].push({ c, display: 'teacher' });
+      }
+    } else {
+      // 同时区（北京）：直接放入
+      if (!courseMap[c.date]) courseMap[c.date] = [];
+      courseMap[c.date].push({ c, display: 'both' });
+    }
+  });
+  
+  // 按开始时间排序（用学生当地时间或老师时间，取决于 display）
+  Object.keys(courseMap).forEach(d => {
+    courseMap[d].sort((a, b) => {
+      const tA = a.display === 'teacher' ? convertTimezone(a.c.date, a.c.startTime, a.c.timezone || 'Asia/Shanghai', 'Asia/Shanghai').time : a.c.startTime;
+      const tB = b.display === 'teacher' ? convertTimezone(b.c.date, b.c.startTime, b.c.timezone || 'Asia/Shanghai', 'Asia/Shanghai').time : b.c.startTime;
+      return parseTimeToMinutes(tA) - parseTimeToMinutes(tB);
+    });
+  });
+
+  // 从rangeStart所在周的周一开始，到rangeEnd所在周的周日结束
+  const rangeMonday = getMonday(rangeStart);
+  const rangeEndSunday = new Date(rangeEnd);
+  const endDay = rangeEndSunday.getDay();
+  const endOffset = endDay === 0 ? 0 : 7 - endDay;
+  rangeEndSunday.setDate(rangeEndSunday.getDate() + endOffset);
+
+  // 生成周数据
+  const weeks = [];
+  let wDate = new Date(rangeMonday);
+  while (wDate <= rangeEndSunday) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(wDate);
+      d.setDate(d.getDate() + i);
+      week.push(d);
+    }
+    weeks.push(week);
+    wDate.setDate(wDate.getDate() + 7);
+  }
+
+  const WEEK_HEADERS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  const today = new Date();
+
+  let html = `<div class="student-schedule-wrap">
+    <div class="ss-title">${titleStr}${hasCourseTz ? `<div style="font-size:12px;color:#996600;margin-top:4px;">含跨时区课程：蓝色=老师时间(北京) / 橙色=学生当地时间</div>` : ''}</div>
+    <table class="ss-table">
+      <thead>
+        <tr>
+          <th class="ss-corner">日期</th>
+          ${WEEK_HEADERS.map(w => `<th class="ss-day-header">${w}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>`;
+
+  weeks.forEach(week => {
+    // 日期行
+    html += '<tr class="ss-date-row">';
+    html += '<td class="ss-date-label">日期</td>';
+    week.forEach(d => {
+      const inRange = d >= rangeStart && d <= rangeEnd;
+      const isToday = isSameDate(d, today);
+      const dayLabel = `${d.getMonth()+1}月${d.getDate()}日`;
+      const weekLabel = WEEK_HEADERS[d.getDay() === 0 ? 6 : d.getDay() - 1];
+      html += `<td class="ss-date-cell ${inRange ? '' : 'ss-other-month'} ${isToday ? 'ss-today' : ''}">
+        ${dayLabel} ${weekLabel}
+      </td>`;
+    });
+    html += '</tr>';
+
+    // 课程内容行
+    html += '<tr class="ss-content-row">';
+    html += '<td class="ss-content-label">课程</td>';
+    week.forEach(d => {
+      const dateStr = formatDateStr(d);
+      const dayCourses = courseMap[dateStr] || [];
+      let cellHtml = '';
+      dayCourses.forEach(item => {
+        const c = item.c;
+        const display = item.display;
+        const teacher = getTeacherById(c.teacherId);
+        const teacherColor = c.teacherId === 'guest' ? '#1c2d5a' : (teacher ? teacher.color : '#333');
+        const teacherName = getTeacherShortName(c);
+        const isCancelled = c.status === 'cancelled';
+        const courseTz = c.timezone || 'Asia/Shanghai';
+        const cTzName = getTimezoneShortName(courseTz);
+        
+        let timeHtml = '';
+        if (display === 'student') {
+          // 学生日期格子：显示学生当地时间（橙色）
+          timeHtml = `<div class="ss-time" style="color:#e8590c;">${c.startTime}-${c.endTime} (${escapeHtml(cTzName)})</div>`;
+        } else if (display === 'teacher') {
+          // 老师日期格子：显示老师北京时间（蓝色）
+          const bjStart = convertTimezone(c.date, c.startTime, courseTz, 'Asia/Shanghai');
+          const bjEnd = convertTimezone(c.date, c.endTime, courseTz, 'Asia/Shanghai');
+          timeHtml = `<div class="ss-time" style="color:#1c7ed6;">${bjStart.time}-${bjEnd.time} (北京)</div>`;
+        } else {
+          // 同时区（北京）：只显示一行
+          timeHtml = `<div class="ss-time">${c.startTime}-${c.endTime}</div>`;
+        }
+        cellHtml += `<div class="ss-course" style="color:${isCancelled ? '#999' : teacherColor};${isCancelled ? 'text-decoration:line-through;' : ''}">
+          ${timeHtml}
+          <div class="ss-info">${escapeHtml(teacherName)} ${escapeHtml(c.name)}</div>
+        </div>`;
+      });
+      html += `<td class="ss-content-cell">${cellHtml || '&nbsp;'}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  // 底部备注
+  const tzNoteHtml = hasCourseTz ? `
+    <div style="margin-top:8px;padding:8px 12px;background:#fff8e6;border:1px solid #ffe08a;border-radius:6px;font-size:12px;color:#996600;">
+      <strong>时区说明：</strong>跨时区课程同时显示在学生当地日期和老师北京日期两个格子里。橙色行为学生当地时间，蓝色行为老师北京时间(UTC+8)。
+    </div>` : '';
+  
+  html += `</tbody>
+    </table>
+    ${tzNoteHtml}
+    <div class="ss-notes">
+      <div class="ss-notes-title">拟定学员作品集排课表：</div>
+      <div class="ss-notes-content">
+        1.上课时长根据专业老师上课内容及学生作业完成情况而定，每次课前必须完成上节课课后作业；<br>
+        2.需请假必须提前与教务老师沟通后上课时间可进行调整。
+      </div>
+    </div>
+  </div>`;
+
+  container.innerHTML = html;
+  // 存储当前范围标签供导出使用
+  container.dataset.ssRangeLabel = rangeLabel;
+  container.dataset.ssTitle = titleStr;
+}
+
+function showDayDetail(dateStr) {
+  currentDate = dateFromStr(dateStr);
+  switchView('day');
+}
+
+/* ============================================================
+   自定义日期范围视图（非学生筛选时）
+   ============================================================ */
+function renderCustomRangeView() {
+  const container = document.getElementById('calendarContainer');
+  const sd = document.getElementById('customStartDate');
+  const ed = document.getElementById('customEndDate');
+  const sv = sd ? sd.value : '';
+  const ev = ed ? ed.value : '';
+  if (!sv || !ev) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:#999;">请选择起止日期</div>';
+    return;
+  }
+  let startDate = dateFromStr(sv);
+  let endDate = dateFromStr(ev);
+  if (startDate > endDate) { const tmp = startDate; startDate = endDate; endDate = tmp; }
+
+  const startStr = formatDateStr(startDate);
+  const endStr = formatDateStr(endDate);
+  const teacherFilter = document.getElementById('teacherFilter').value;
+  let list = DB.courses.filter(c => c.date >= startStr && c.date <= endStr);
+  if (teacherFilter) list = list.filter(c => c.teacherId === teacherFilter);
+  list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+
+  const courseMap = {};
+  list.forEach(c => {
+    if (!courseMap[c.date]) courseMap[c.date] = [];
+    courseMap[c.date].push(c);
+  });
+
+  const rangeMonday = getMonday(startDate);
+  const rangeEndSunday = new Date(endDate);
+  const endDay = rangeEndSunday.getDay();
+  const endOffset = endDay === 0 ? 0 : 7 - endDay;
+  rangeEndSunday.setDate(rangeEndSunday.getDate() + endOffset);
+
+  const weeks = [];
+  let wDate = new Date(rangeMonday);
+  while (wDate <= rangeEndSunday) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(wDate);
+      d.setDate(d.getDate() + i);
+      week.push(d);
+    }
+    weeks.push(week);
+    wDate.setDate(wDate.getDate() + 7);
+  }
+
+  const WEEK_HEADERS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+  const today = new Date();
+  const totalCourses = list.length;
+
+  let titleStr;
+  if (formatDateStr(startDate) === formatDateStr(endDate)) {
+    titleStr = `${startDate.getFullYear()}年${startDate.getMonth()+1}月${startDate.getDate()}日排课表`;
+  } else {
+    titleStr = `${startDate.getMonth()+1}月${startDate.getDate()}日-${endDate.getMonth()+1}月${endDate.getDate()}日排课表`;
+  }
+
+  let html = `<div class="student-schedule-wrap">
+    <div class="ss-title">${escapeHtml(titleStr)}</div>
+    <table class="ss-table">
+      <thead>
+        <tr>
+          <th class="ss-corner">日期</th>
+          ${WEEK_HEADERS.map(w => `<th class="ss-day-header">${w}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>`;
+
+  weeks.forEach(week => {
+    html += '<tr class="ss-date-row">';
+    html += '<td class="ss-date-label">日期</td>';
+    week.forEach(d => {
+      const inRange = d >= startDate && d <= endDate;
+      const isToday = isSameDate(d, today);
+      const dayLabel = `${d.getMonth()+1}月${d.getDate()}日`;
+      const weekLabel = WEEK_HEADERS[d.getDay() === 0 ? 6 : d.getDay() - 1];
+      html += `<td class="ss-date-cell ${inRange ? '' : 'ss-other-month'} ${isToday ? 'ss-today' : ''}">${dayLabel} ${weekLabel}</td>`;
+    });
+    html += '</tr>';
+
+    html += '<tr class="ss-content-row">';
+    html += '<td class="ss-content-label">课程</td>';
+    week.forEach(d => {
+      const dateStr = formatDateStr(d);
+      const dayCourses = courseMap[dateStr] || [];
+      let cellHtml = '';
+      dayCourses.forEach(c => {
+        const teacher = getTeacherById(c.teacherId);
+        const teacherColor = c.teacherId === 'guest' ? '#1c2d5a' : (teacher ? teacher.color : '#333');
+        const teacherName = getTeacherDisplayName(c);
+        const isCancelled = c.status === 'cancelled';
+        cellHtml += `<div class="ss-course" style="color:${isCancelled ? '#999' : teacherColor};${isCancelled ? 'text-decoration:line-through;' : ''}">
+          <div class="ss-time">${c.startTime}-${c.endTime}</div>
+          <div class="ss-info">${escapeHtml(teacherName)} ${escapeHtml(c.name)}</div>
+        </div>`;
+      });
+      html += `<td class="ss-content-cell">${cellHtml || '&nbsp;'}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+/* ============================================================
+   学期视图（多月堆叠）
+   ============================================================ */
+function renderTermView() {
+  const container = document.getElementById('calendarContainer');
+  const sel = document.getElementById('termMonthCount');
+  const monthCount = sel ? parseInt(sel.value) : 3;
+  const today = new Date();
+  // 从当前日期所在月开始，展示 monthCount 个月
+  const startYear = currentDate.getFullYear();
+  const startMonth = currentDate.getMonth();
+  const courses = getFilteredCourses();
+  const MAX_EVENTS = 3;
+
+  let html = '<div class="term-view-wrap">';
+
+  for (let mi = 0; mi < monthCount; mi++) {
+    const m = (startMonth + mi) % 12;
+    const y = startYear + Math.floor((startMonth + mi) / 12);
+    const firstDay = new Date(y, m, 1);
+    const lastDay = new Date(y, m + 1, 0);
+    const startWd = firstDay.getDay();
+    const startOffset = startWd === 0 ? 6 : startWd - 1;
+    const daysInMonth = lastDay.getDate();
+    const prevMonthLast = new Date(y, m, 0).getDate();
+    const monthCourses = courses.filter(c => {
+      const d = dateFromStr(c.date);
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
+
+    const cells = [];
+    for (let i = startOffset - 1; i >= 0; i--) cells.push({ date: new Date(y, m - 1, prevMonthLast - i), other: true });
+    for (let d = 1; d <= daysInMonth; d++) cells.push({ date: new Date(y, m, d), other: false });
+    while (cells.length % 7 !== 0) {
+      const last = cells[cells.length - 1].date;
+      cells.push({ date: new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1), other: true });
+    }
+
+    html += `<div class="term-month-block">
+      <div class="term-month-header">${y}年${m + 1}月 <span class="tm-badge">${monthCourses.length}节课</span></div>
+      <div class="term-weekday-row" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:1px;">
+        ${['周一','周二','周三','周四','周五','周六','周日'].map(w => `<div class="month-weekday">${w}</div>`).join('')}
+      </div>
+      <div class="term-grid">`;
+
+    cells.forEach(cell => {
+      const dateStr = formatDateStr(cell.date);
+      const isToday = isSameDate(cell.date, today);
+      const dayCourses = courses.filter(c => c.date === dateStr).sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
+      html += `<div class="month-cell ${cell.other ? 'other-month' : ''} ${isToday ? 'today' : ''}">
+        <div class="mc-date">${cell.date.getDate()}</div>`;
+      dayCourses.slice(0, MAX_EVENTS).forEach(c => {
+        const cmeta = getColorMeta(c.color);
+        const isCancelled = c.status === 'cancelled';
+        const eBg = isCancelled ? '#f0f0f3' : cmeta.bg;
+        const eText = isCancelled ? '#9097a8' : cmeta.text;
+        const eBorder = isCancelled ? '#c0c4cc' : c.color;
+        html += `<div class="month-event" style="border-left-color:${eBorder};background:${eBg};color:${eText};${isCancelled ? 'text-decoration:line-through;opacity:0.7;' : ''}" onclick="event.stopPropagation();openCourseModal('${c.id}')" title="${escapeHtml(c.name)} ${c.startTime}-${c.endTime}">
+          ${c.startTime} ${escapeHtml(c.name)}${isCancelled ? '<span style="font-size:9px;background:#9097a8;color:#fff;padding:0 3px;border-radius:2px;margin-left:2px;">取消</span>' : getRepeatBadge(c)}
+        </div>`;
+      });
+      if (dayCourses.length > MAX_EVENTS) html += `<div class="month-more" onclick="showDayDetail('${dateStr}')">+${dayCourses.length - MAX_EVENTS} 更多</div>`;
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+/* ============================================================
+   老师管理页
+   ============================================================ */
+function renderTeachersPage() {
+  const container = document.getElementById('teachersContainer');
+  const totalCourses = DB.courses.length;
+  const totalTeachers = DB.teachers.length;
+
+  // 按老师统计
+  const stats = DB.teachers.map(t => {
+    const list = DB.courses.filter(c => c.teacherId === t.id);
+    const weekDates = getWeekDates(new Date());
+    const weekCourses = list.filter(c => {
+      const d = dateFromStr(c.date);
+      return d >= weekDates[0] && d <= weekDates[6];
+    });
+    return { teacher: t, total: list.length, weekCount: weekCourses.length, courses: list };
+  });
+
+  let html = `<div class="page-header">
+    <div>
+      <h2>老师管理</h2>
+      <div class="page-desc">共 ${totalTeachers} 名老师，${totalCourses} 节课程</div>
+    </div>
+  </div>
+
+  <div class="stat-cards">
+    <div class="stat-card"><div class="sc-label">老师总数</div><div class="sc-value primary">${totalTeachers}</div></div>
+    <div class="stat-card"><div class="sc-label">课程总数</div><div class="sc-value">${totalCourses}</div></div>
+    <div class="stat-card"><div class="sc-label">本周课程</div><div class="sc-value">${stats.reduce((s,t)=>s+t.weekCount,0)}</div></div>
+    <div class="stat-card"><div class="sc-label">平均每师课程</div><div class="sc-value">${totalTeachers ? (totalCourses/totalTeachers).toFixed(1) : 0}</div></div>
+  </div>
+
+  <div class="teacher-grid">`;
+
+  stats.forEach(s => {
+    const t = s.teacher;
+    html += `<div class="teacher-card" onclick="filterByTeacher('${t.id}')">
+      <div class="teacher-card-top">
+        <div class="teacher-avatar" style="background:${t.color};">${t.name.charAt(t.name.length-1)}</div>
+        <div>
+          <div class="teacher-card-name">${escapeHtml(t.name)}</div>
+          <div class="teacher-card-id">${t.username}</div>
+        </div>
+      </div>
+      <div class="teacher-stats">
+        <div>
+          <div class="teacher-stat-num">${s.total}</div>
+          <div class="teacher-stat-label">总课程数</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="teacher-stat-num" style="font-size:18px;color:var(--text-secondary);">${s.weekCount}</div>
+          <div class="teacher-stat-label">本周</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function filterByTeacher(teacherId) {
+  switchPage('calendar');
+  document.getElementById('teacherFilter').value = teacherId;
+  renderCurrentView();
+}
+
+/* ============================================================
+   设置页 - 老师名字在线编辑
+   ============================================================ */
+function renderSettingsPage() {
+  const container = document.getElementById('settingsContainer');
+  let html = `<div class="page-header">
+    <div>
+      <h2>设置</h2>
+      <div class="page-desc">在这里修改老师姓名、颜色，管理学生名单，修改后立即同步给所有用户</div>
+    </div>
+  </div>
+
+  <div class="stat-cards">
+    <div class="stat-card"><div class="sc-label">老师总数</div><div class="sc-value primary">${DB.teachers.length}</div></div>
+    <div class="stat-card"><div class="sc-label">学生总数</div><div class="sc-value primary">${DB.students.length}</div></div>
+    <div class="stat-card"><div class="sc-label">课程总数</div><div class="sc-value">${DB.courses.length}</div></div>
+  </div>
+
+  <div class="page-header" style="margin-top:24px;">
+    <div><h3 style="font-size:16px;">老师列表</h3></div>
+  </div>
+
+  <div class="teacher-grid">`;
+
+  DB.teachers.forEach(t => {
+    const courseCount = DB.courses.filter(c => c.teacherId === t.id).length;
+    html += `<div class="teacher-card" style="cursor:pointer;" onclick="openTeacherModal('${t.id}')">
+      <div class="teacher-card-top">
+        <div class="teacher-avatar" style="background:${t.color};">${t.name.charAt(t.name.length-1)}</div>
+        <div>
+          <div class="teacher-card-name">${escapeHtml(t.name)}</div>
+          <div class="teacher-card-id">${t.username} &middot; ${courseCount} 节课</div>
+        </div>
+      </div>
+      <div style="text-align:center;padding-top:8px;">
+        <button class="btn btn-sm btn-primary">编辑</button>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>
+
+  <div class="page-header" style="margin-top:32px;">
+    <div><h3 style="font-size:16px;">学生名单</h3></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="settingsStudentSearch" placeholder="搜索学生..." oninput="renderStudentList()" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:160px;">
+      <button class="btn btn-primary btn-sm" onclick="addStudentInline()">+ 添加</button>
+    </div>
+  </div>
+
+  <div id="studentListContainer"></div>
+
+  <div class="page-header" style="margin-top:32px;">
+    <div><h3 style="font-size:16px;">数据备份与恢复</h3></div>
+  </div>
+  <div style="background:#f0f4ff;border:1px solid #c3d8f3;border-radius:8px;padding:20px;">
+    <p style="color:var(--text-secondary);margin-bottom:12px;font-size:13px;">每次更新代码前，请先点击"备份数据"下载数据文件。更新完成后，点击"恢复数据"上传该文件即可还原所有老师、学生和课程数据。</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="backupData()">备份数据（下载）</button>
+      <button class="btn" onclick="document.getElementById('restoreFileInput').click()">恢复数据（上传）</button>
+      <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="restoreData(event)">
+    </div>
+  </div>
+
+  <div class="page-header" style="margin-top:32px;">
+    <div><h3 style="font-size:16px;color:var(--danger);">危险操作</h3></div>
+  </div>
+  <div style="background:#fef0f0;border:1px solid #f0c9cb;border-radius:8px;padding:20px;">
+    <p style="color:var(--text-secondary);margin-bottom:12px;font-size:13px;">重置所有数据将清除所有课程和老师姓名修改，恢复到初始状态。此操作不可撤销。</p>
+    <button class="btn btn-danger" onclick="resetAllData()">重置所有数据</button>
+  </div>`;
+
+  container.innerHTML = html;
+  renderStudentList();
+}
+
+function renderStudentList() {
+  const container = document.getElementById('studentListContainer');
+  if (!container) return;
+  const searchEl = document.getElementById('settingsStudentSearch');
+  const query = (searchEl ? searchEl.value : '').trim().toLowerCase();
+  let list = DB.students;
+  if (query) {
+    list = list.filter(s => s.name.toLowerCase().includes(query));
+  }
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">';
+  list.forEach(s => {
+    const courseCount = DB.courses.filter(c => c.studentIds && c.studentIds.includes(s.id)).length;
+    html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;cursor:pointer;" onclick="editStudentInline('${s.id}')">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#6c8eef;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">${s.name.charAt(s.name.length-1)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.name)}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${courseCount} 节课${s.timezone && s.timezone !== 'Asia/Shanghai' ? ' · ' + escapeHtml(getTimezoneShortName(s.timezone)) : ''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:6px;">
+        <button class="btn btn-sm" style="flex:1;padding:3px;">改名</button>
+        <button class="btn btn-sm btn-danger" style="padding:3px 6px;" onclick="event.stopPropagation();deleteStudent('${s.id}','${escapeHtml(s.name)}')">删</button>
+      </div>
+    </div>`;
+  });
+  if (list.length === 0) {
+    html += '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text-muted);">无匹配学生</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+/* ---------- 学生管理（内联编辑） ---------- */
+async function addStudentInline() {
+  showStudentModal(null);
+}
+
+async function editStudentInline(studentId) {
+  showStudentModal(studentId);
+}
+
+function showStudentModal(studentId) {
+  const isEdit = !!studentId;
+  const student = isEdit ? DB.students.find(s => s.id === studentId) : null;
+  
+  // 移除已有弹窗
+  const old = document.getElementById('studentEditModal');
+  if (old) old.remove();
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'studentEditModal';
+  modal.style.cssText = 'display:flex;z-index:600;';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>${isEdit ? '编辑学生' : '添加学生'}</h3>
+        <button class="btn btn-sm" onclick="document.getElementById('studentEditModal').remove()">×</button>
+      </div>
+      <div class="modal-body" style="padding:20px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">姓名</label>
+          <input type="text" id="studentEditName" value="${student ? escapeHtml(student.name) : ''}" placeholder="请输入学生姓名"
+            style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        ${isEdit ? `<button class="btn btn-danger" style="margin-right:auto;" onclick="deleteStudentFromModal('${studentId}')">删除</button>` : ''}
+        <button class="btn" onclick="document.getElementById('studentEditModal').remove()">取消</button>
+        <button class="btn btn-primary" onclick="saveStudentFromModal(${isEdit ? `'${studentId}'` : 'null'})">保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => {
+    if (e.target === modal) modal.remove();
+  });
+  // 聚焦姓名输入框
+  setTimeout(() => {
+    const nameInput = document.getElementById('studentEditName');
+    if (nameInput) nameInput.focus();
+  }, 50);
+}
+
+async function saveStudentFromModal(studentId) {
+  const name = document.getElementById('studentEditName').value.trim();
+  
+  if (!name) { alert('姓名不能为空'); return; }
+  
+  try {
+    if (studentId && studentId !== 'null') {
+      await api('/api/students/' + studentId, 'PUT', { name });
+    } else {
+      await api('/api/students', 'POST', { name });
+    }
+    document.getElementById('studentEditModal').remove();
+  } catch (e) {
+    alert(e.message || '保存失败');
+  }
+}
+
+async function deleteStudentFromModal(studentId) {
+  const student = DB.students.find(s => s.id === studentId);
+  if (!student) return;
+  if (!confirm(`确定删除学生「${student.name}」吗？\n该学生将从所有关联课程中移除。`)) return;
+  try {
+    await api('/api/students/' + studentId, 'DELETE');
+    document.getElementById('studentEditModal').remove();
+  } catch (e) {
+    alert(e.message || '删除失败');
+  }
+}
+
+async function deleteStudent(studentId, studentName) {
+  if (!confirm(`确定删除学生「${studentName}」吗？\n该学生将从所有关联课程中移除。`)) return;
+  try {
+    await api('/api/students/' + studentId, 'DELETE');
+  } catch (e) {
+    alert(e.message || '删除失败');
+  }
+}
+
+let editingTeacherId = null;
+let editingTeacherColor = null;
+
+function openTeacherModal(teacherId) {
+  editingTeacherId = teacherId;
+  const teacher = DB.teachers.find(t => t.id === teacherId);
+  if (!teacher) return;
+  document.getElementById('editTeacherId').value = teacher.id;
+  document.getElementById('editTeacherName').value = teacher.name;
+  document.getElementById('editTeacherUsername').value = teacher.username;
+  editingTeacherColor = teacher.color;
+  // Render color picker
+  const picker = document.getElementById('editTeacherColorPicker');
+  picker.innerHTML = '';
+  TEACHER_COLORS.forEach(c => {
+    const dot = document.createElement('div');
+    dot.style.cssText = `width:32px;height:32px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${c === editingTeacherColor ? '#1f2330' : 'transparent'};transition:border-color .15s;`;
+    dot.onclick = function() {
+      editingTeacherColor = c;
+      picker.querySelectorAll('div').forEach(d => d.style.border = '3px solid transparent');
+      this.style.border = '3px solid #1f2330';
+    };
+    picker.appendChild(dot);
+  });
+  document.getElementById('teacherModal').classList.add('active');
+}
+
+function closeTeacherModal() {
+  document.getElementById('teacherModal').classList.remove('active');
+  editingTeacherId = null;
+}
+
+async function saveTeacher() {
+  if (!editingTeacherId) return;
+  const name = document.getElementById('editTeacherName').value.trim();
+  if (!name) { alert('请输入老师姓名'); return; }
+  try {
+    await api('/api/teachers/' + editingTeacherId, 'PUT', { name, color: editingTeacherColor });
+    closeTeacherModal();
+  } catch (e) {
+    alert(e.message || '保存失败');
+  }
+}
+
+/* 备份数据：下载完整数据文件 */
+async function backupData() {
+  try {
+    const res = await fetch('/api/backup', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('备份失败');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const d = new Date();
+    const ts = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+    a.download = `排课数据备份_${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('备份数据失败：' + e.message);
+  }
+}
+
+/* 恢复数据：上传备份文件 */
+async function restoreData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = ''; // 清空input，允许再次选择同一文件
+  if (!confirm('恢复数据将覆盖当前所有数据，确定吗？')) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.users || !data.teachers || !data.courses) {
+      alert('文件格式不正确，请选择正确的备份文件');
+      return;
+    }
+    const res = await api('/api/restore', 'POST', data);
+    const tCount = res.teachers ? res.teachers.length : '?';
+    const sCount = res.students ? res.students.length : '?';
+    const cCount = res.courses ? res.courses.length : '?';
+    alert('恢复成功！老师' + tCount + '人，学生' + sCount + '人，课程' + cCount + '节');
+    renderSettingsPage();
+    renderCurrentView();
+  } catch (e) {
+    alert('恢复数据失败：' + (e.message || '文件格式错误'));
+  }
+}
+
+async function resetAllData() {
+  if (!confirm('确定要重置所有数据吗？所有课程和老师修改将被清除，此操作不可撤销。')) return;
+  try {
+    await api('/api/reset', 'POST');
+    alert('数据已重置');
+    switchPage('calendar');
+  } catch (e) {
+    alert(e.message || '重置失败');
+  }
+}
+
+/* ============================================================
+   签到统计页
+   ============================================================ */
+let attendanceYear = null;
+let attendanceMonth = null;
+
+function renderAttendancePage() {
+  const now = new Date();
+  if (!attendanceYear) attendanceYear = now.getFullYear();
+  if (!attendanceMonth) attendanceMonth = now.getMonth() + 1;
+
+  const container = document.getElementById('attendanceContainer');
+  let html = `<div class="page-header">
+    <div>
+      <h2>签到统计</h2>
+      <div class="page-desc">按学生统计当月课程签到率，取消的课程不计入签到</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select id="attMonthSelect" onchange="changeAttendanceMonth()" style="padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;">
+  `;
+  for (let m = 1; m <= 12; m++) {
+    html += `<option value="${m}" ${m === attendanceMonth ? 'selected' : ''}>${m}月</option>`;
+  }
+  html += `</select>
+      <select id="attYearSelect" onchange="changeAttendanceMonth()" style="padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;">
+  `;
+  for (let y = now.getFullYear() - 1; y <= now.getFullYear() + 1; y++) {
+    html += `<option value="${y}" ${y === attendanceYear ? 'selected' : ''}>${y}年</option>`;
+  }
+  html += `</select>
+      <button class="btn btn-primary btn-sm" onclick="loadAttendanceStats()">刷新统计</button>
+    </div>
+  </div>
+  <div id="attendanceStatsContent" style="margin-top:20px;">
+    <p style="text-align:center;color:var(--text-muted);padding:40px;">正在加载统计数据...</p>
+  </div>`;
+
+  container.innerHTML = html;
+  loadAttendanceStats();
+}
+
+function changeAttendanceMonth() {
+  attendanceYear = parseInt(document.getElementById('attYearSelect').value);
+  attendanceMonth = parseInt(document.getElementById('attMonthSelect').value);
+  loadAttendanceStats();
+}
+
+async function loadAttendanceStats() {
+  try {
+    const data = await api(`/api/stats/attendance?year=${attendanceYear}&month=${attendanceMonth}`, 'GET');
+    renderAttendanceStats(data);
+  } catch (e) {
+    document.getElementById('attendanceStatsContent').innerHTML = `<p style="color:var(--danger);">加载失败: ${e.message}</p>`;
+  }
+}
+
+function renderAttendanceStats(data) {
+  const container = document.getElementById('attendanceStatsContent');
+  const stats = data.stats || [];
+
+  // 汇总
+  const totalStudents = stats.length;
+  const activeStudents = stats.filter(s => s.total > 0).length;
+  const avgRate = activeStudents > 0
+    ? Math.round(stats.filter(s => s.total > 0).reduce((sum, s) => sum + s.rate, 0) / activeStudents)
+    : 0;
+  const totalCourses = stats.reduce((sum, s) => sum + s.total, 0);
+  const totalCancelled = stats.reduce((sum, s) => sum + s.cancelled, 0);
+
+  let html = `<div class="stat-cards">
+    <div class="stat-card"><div class="sc-label">活跃学生</div><div class="sc-value primary">${activeStudents}</div></div>
+    <div class="stat-card"><div class="sc-label">本月课程总数</div><div class="sc-value">${totalCourses}</div></div>
+    <div class="stat-card"><div class="sc-label">取消课程</div><div class="sc-value" style="color:var(--danger);">${totalCancelled}</div></div>
+    <div class="stat-card"><div class="sc-label">平均签到率</div><div class="sc-value" style="color:${avgRate >= 80 ? '#30a46c' : avgRate >= 50 ? '#e8a317' : '#e03131'};">${avgRate}%</div></div>
+  </div>
+
+  <div class="page-header" style="margin-top:24px;">
+    <div><h3 style="font-size:16px;">学生签到明细</h3></div>
+  </div>`;
+
+  if (stats.length === 0) {
+    html += '<p style="text-align:center;color:var(--text-muted);padding:40px;">暂无学生数据</p>';
+    container.innerHTML = html;
+    return;
+  }
+
+  // 表格
+  html += `<div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:800px;">
+      <thead>
+        <tr style="background:var(--bg-subtle);border-bottom:2px solid var(--border);">
+          <th style="padding:10px 12px;text-align:left;font-weight:600;">学生</th>
+          <th style="padding:10px 12px;text-align:center;font-weight:600;">已上/正常</th>
+          <th style="padding:10px 12px;text-align:center;font-weight:600;">已上/取消</th>
+          <th style="padding:10px 12px;text-align:center;font-weight:600;">待上课</th>
+          <th style="padding:10px 12px;text-align:center;font-weight:600;">本月合计</th>
+          <th style="padding:10px 12px;text-align:center;font-weight:600;">签到率</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  stats.forEach(s => {
+    const rateColor = s.rate >= 80 ? '#30a46c' : s.rate >= 50 ? '#e8a317' : '#e03131';
+    const rateBg = s.rate >= 80 ? '#ebfbee' : s.rate >= 50 ? '#fff9db' : '#fde8e8';
+    html += `<tr style="border-bottom:1px solid var(--border);${s.total === 0 ? 'opacity:0.5;' : ''}">
+      <td style="padding:10px 12px;font-weight:500;">${escapeHtml(s.studentName)}</td>
+      <td style="padding:10px 12px;text-align:center;color:#30a46c;font-weight:600;">${s.pastNormal}</td>
+      <td style="padding:10px 12px;text-align:center;color:var(--danger);">${s.pastCancelled}</td>
+      <td style="padding:10px 12px;text-align:center;color:var(--text-muted);">${s.upcoming}</td>
+      <td style="padding:10px 12px;text-align:center;font-weight:600;">${s.total}</td>
+      <td style="padding:10px 12px;text-align:center;">
+        <span style="display:inline-block;padding:3px 10px;border-radius:12px;background:${rateBg};color:${rateColor};font-weight:600;">${s.total > 0 ? s.rate + '%' : '—'}</span>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+/* ============================================================
+   课程弹窗（新建/编辑）
+   ============================================================ */
+function openCourseModal(courseId) {
+  // 权限：老师只能编辑自己的，但可以查看别人的
+  editingCourseId = courseId || null;
+  const modal = document.getElementById('courseModal');
+  const title = document.getElementById('modalTitle');
+  const delBtn = document.getElementById('deleteCourseBtn');
+
+  if (courseId) {
+    const course = DB.courses.find(c => c.id === courseId);
+    if (!course) return;
+    title.textContent = canEditCourse(course) ? '编辑课程' : '查看课程';
+    delBtn.style.display = canEditCourse(course) ? '' : 'none';
+    document.getElementById('courseId').value = course.id;
+    document.getElementById('courseName').value = course.name;
+    document.getElementById('courseDate').value = course.date;
+    setTimeValue('courseStart', course.startTime);
+    setTimeValue('courseEnd', course.endTime);
+    document.getElementById('courseLocation').value = course.location || '';
+    document.getElementById('courseTeacher').value = course.teacherId;
+    // 兼职老师：显示输入框并填入名字
+    if (course.teacherId === 'guest') {
+      document.getElementById('guestTeacherContainer').style.display = 'block';
+      document.getElementById('guestTeacherName').value = course.guestTeacherName || '';
+    } else {
+      document.getElementById('guestTeacherContainer').style.display = 'none';
+      document.getElementById('guestTeacherName').value = '';
+    }
+    document.getElementById('courseDesc').value = course.description || '';
+    // 设置课程时区
+    document.getElementById('courseTimezone').value = course.timezone || 'Asia/Shanghai';
+    updateTimezonePreview();
+    // 编辑时隐藏重复选项（已创建的重复课程单独编辑）
+    document.getElementById('repeatGroup').style.display = 'none';
+    // 编辑时显示关联学生
+    document.getElementById('studentGroup').style.display = '';
+    initStudentList(course.studentIds || []);
+    // 编辑时显示课程状态
+    document.getElementById('statusGroup').style.display = '';
+    currentCourseStatus = course.status || 'normal';
+    updateStatusButtons();
+    updateColorFromTeacher(course.teacherId);
+  } else {
+    if (!canCreateCourse()) {
+      alert('您没有创建课程的权限');
+      return;
+    }
+    title.textContent = '新建课程';
+    delBtn.style.display = 'none';
+    document.getElementById('courseId').value = '';
+    document.getElementById('courseName').value = '';
+    // 默认日期：当前查看日期
+    document.getElementById('courseDate').value = formatDateStr(currentDate);
+    setTimeValue('courseStart', '09:00');
+    setTimeValue('courseEnd', '10:30');
+    document.getElementById('courseLocation').value = '';
+    // 新建时隐藏兼职老师输入框
+    document.getElementById('guestTeacherContainer').style.display = 'none';
+    document.getElementById('guestTeacherName').value = '';
+    // 新建时显示重复选项
+    document.getElementById('repeatGroup').style.display = '';
+    document.getElementById('courseRepeat').value = 'none';
+    document.getElementById('weekdayPicker').style.display = 'none';
+    document.getElementById('repeatEndDateGroup').style.display = 'none';
+    document.getElementById('repeatEndDate').value = '';
+    document.getElementById('repeatHint').textContent = '不重复，仅创建单次课程';
+    // 新建课程时：默认北京时间
+    document.getElementById('courseTimezone').value = 'Asia/Shanghai';
+    updateTimezonePreview();
+    // 新建时显示关联学生
+    document.getElementById('studentGroup').style.display = '';
+    initStudentList([]);
+    // 新建时不显示课程状态（默认 normal）
+    document.getElementById('statusGroup').style.display = 'none';
+    currentCourseStatus = 'normal';
+    // 老师创建课程时默认分配给自己，排课人/管理员用筛选值
+    let defaultTeacherId;
+    if (currentUser.role === 'teacher') {
+      const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
+      defaultTeacherId = myTeacher ? myTeacher.id : DB.teachers[0].id;
+    } else {
+      const filter = document.getElementById('teacherFilter').value;
+      defaultTeacherId = filter || DB.teachers[0].id;
+    }
+    document.getElementById('courseTeacher').value = defaultTeacherId;
+    document.getElementById('courseDesc').value = '';
+    updateColorFromTeacher(defaultTeacherId);
+  }
+
+  // 设置表单只读状态
+  const editable = courseId ? canEditCourse(DB.courses.find(c => c.id === courseId)) : canCreateCourse();
+  ['courseName','courseDate','courseStart','courseEnd','courseStartInput','courseEndInput','courseLocation','courseTeacher','courseDesc','guestTeacherName','courseTimezone'].forEach(id => {
+    document.getElementById(id).disabled = !editable;
+  });
+  document.querySelector('.modal-footer .btn-primary').style.display = editable ? '' : 'none';
+
+  modal.classList.add('active');
+}
+
+function closeCourseModal() {
+  document.getElementById('courseModal').classList.remove('active');
+  editingCourseId = null;
+  currentCourseStatus = 'normal';
+}
+
+/* ---------- 课程状态管理 ---------- */
+let currentCourseStatus = 'normal';
+
+function setCourseStatus(status) {
+  currentCourseStatus = status;
+  updateStatusButtons();
+}
+
+function updateStatusButtons() {
+  const normalBtn = document.getElementById('statusNormalBtn');
+  const cancelledBtn = document.getElementById('statusCancelledBtn');
+  if (!normalBtn || !cancelledBtn) return;
+  if (currentCourseStatus === 'cancelled') {
+    normalBtn.style.background = '';
+    normalBtn.style.color = '#30a46c';
+    normalBtn.style.borderColor = '#30a46c';
+    cancelledBtn.style.background = '#9097a8';
+    cancelledBtn.style.color = '#fff';
+    cancelledBtn.style.borderColor = '#9097a8';
+  } else {
+    normalBtn.style.background = '#30a46c';
+    normalBtn.style.color = '#fff';
+    normalBtn.style.borderColor = '#30a46c';
+    cancelledBtn.style.background = '';
+    cancelledBtn.style.color = '#9097a8';
+    cancelledBtn.style.borderColor = '#9097a8';
+  }
+}
+
+function updateColorFromTeacher(teacherId) {
+  if (teacherId === 'guest') {
+    selectedColor = PART_TIME_COLOR;
+    document.getElementById('colorPreview').style.background = PART_TIME_COLOR;
+  } else {
+    const teacher = getTeacherById(teacherId);
+    if (teacher) {
+      selectedColor = teacher.color;
+      document.getElementById('colorPreview').style.background = teacher.color;
+    }
+  }
+}
+
+// 老师选择变化时显示/隐藏兼职老师输入框
+function handleTeacherChange() {
+  const sel = document.getElementById('courseTeacher');
+  const guestContainer = document.getElementById('guestTeacherContainer');
+  const guestInput = document.getElementById('guestTeacherName');
+  if (sel.value === 'guest') {
+    guestContainer.style.display = 'block';
+    // 确保输入框可用状态与下拉框一致
+    guestInput.disabled = sel.disabled;
+  } else {
+    guestContainer.style.display = 'none';
+    guestInput.value = '';
+  }
+  updateColorFromTeacher(sel.value);
+}
+
+async function saveCourse() {
+  const name = document.getElementById('courseName').value.trim();
+  const date = document.getElementById('courseDate').value;
+  const start = getTimeValue('courseStart');
+  const end = getTimeValue('courseEnd');
+  const location = document.getElementById('courseLocation').value.trim();
+  const teacherId = document.getElementById('courseTeacher').value;
+  const guestTeacherName = document.getElementById('guestTeacherName').value.trim();
+  const desc = document.getElementById('courseDesc').value.trim();
+  const repeat = document.getElementById('courseRepeat') ? document.getElementById('courseRepeat').value : 'none';
+  const repeatEndDate = document.getElementById('repeatEndDate') ? document.getElementById('repeatEndDate').value : '';
+  const studentIds = getSelectedStudentIds();
+
+  if (!name) { alert('请输入课程名称'); return; }
+  if (!date) { alert('请选择日期'); return; }
+  if (!start || !end) { alert('请选择时间'); return; }
+  if (!teacherId) { alert('请选择授课老师'); return; }
+  if (teacherId === 'guest' && !guestTeacherName) { alert('请输入兼职老师姓名'); return; }
+  if (parseTimeToMinutes(start) >= parseTimeToMinutes(end)) {
+    alert('结束时间必须晚于开始时间'); return;
+  }
+
+  // 重复排课验证截止日期
+  let weekdays = [];
+  if (!editingCourseId && repeat !== 'none') {
+    if (!repeatEndDate) { alert('请选择重复截止日期'); return; }
+    if (repeatEndDate < date) { alert('截止日期不能早于开始日期'); return; }
+  }
+  if (!editingCourseId && repeat === 'weekly-weekdays') {
+    weekdays = getSelectedWeekdays();
+    if (weekdays.length === 0) { alert('请至少选择一个星期'); return; }
+  }
+
+  // 重复排课确认
+  if (!editingCourseId && repeat !== 'none') {
+    const endDateStr = repeatEndDate;
+    let repeatText;
+    if (repeat === 'weekly') repeatText = `每周重复，从${date}到${endDateStr}`;
+    else if (repeat === 'biweekly') repeatText = `隔周一次，从${date}到${endDateStr}`;
+    else if (repeat === 'weekly-weekdays') {
+      const names = weekdays.map(w => WEEK_NAMES[w]);
+      repeatText = `每周${names.join('、')}，从${date}到${endDateStr}`;
+    }
+    if (!confirm(`将创建重复课程：${repeatText}，确认吗？`)) return;
+  }
+
+  // 编辑重复课程：选择"仅当次"还是"之后全部"
+  let updateMode = 'single';
+  if (editingCourseId) {
+    const course = DB.courses.find(c => c.id === editingCourseId);
+    if (course && course.repeatGroupId) {
+      const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const isWeekdayType = course.repeatType === 'weekly-weekdays';
+      const wd = isWeekdayType ? WEEKDAY_NAMES[new Date(course.date + 'T00:00:00').getDay()] : '';
+      
+      const msg = isWeekdayType
+        ? `这是重复排课中的一节（${wd}）。\n\n点击「确定」= 修改本节及之后所有${wd}的课程\n点击「取消」= 仅修改这一次`
+        : `这是重复排课中的一节。\n\n点击「确定」= 修改本次及之后所有同类课程\n点击「取消」= 仅修改这一次`;
+      const choice = confirm(msg);
+      updateMode = choice ? 'all-future' : 'single';
+    }
+  }
+
+  const data = {
+    name, date, startTime: start, endTime: end,
+    location, teacherId, guestTeacherName, description: desc, repeat, studentIds, status: currentCourseStatus,
+    repeatEndDate, updateMode,
+    timezone: document.getElementById('courseTimezone') ? document.getElementById('courseTimezone').value : 'Asia/Shanghai'
+  };
+  if (repeat === 'weekly-weekdays') data.weekdays = weekdays;
+
+  try {
+    if (editingCourseId) {
+      await api('/api/courses/' + editingCourseId + (updateMode === 'all-future' ? '?all-future=1' : ''), 'PUT', data);
+    } else {
+      await api('/api/courses', 'POST', data);
+    }
+    closeCourseModal();
+  } catch (e) {
+    alert(e.message || '保存失败');
+  }
+}
+
+async function deleteCurrentCourse() {
+  if (!editingCourseId) return;
+  const course = DB.courses.find(c => c.id === editingCourseId);
+  if (!course) return;
+  
+  // 如果是重复课程，显示选项对话框
+  if (course.repeatGroupId) {
+    showDeleteRepeatModal(course);
+    return;
+  }
+  
+  if (!confirm(`确定删除课程「${course.name}」吗？`)) return;
+  try {
+    await api('/api/courses/' + editingCourseId, 'DELETE');
+    closeCourseModal();
+    // Socket.io 会自动推送删除事件
+  } catch (e) {
+    alert(e.message || '删除失败');
+  }
+}
+
+function closeDeleteRepeatModal() {
+  document.getElementById('deleteRepeatModal').style.display = 'none';
+}
+
+function showDeleteRepeatModal(course) {
+  const modal = document.getElementById('deleteRepeatModal');
+  const optionsDiv = document.getElementById('deleteRepeatOptions');
+  const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  
+  // 获取同组的所有课程
+  const groupCourses = DB.courses.filter(c => c.repeatGroupId === course.repeatGroupId);
+  
+  // 获取当前课程是星期几
+  const currentDay = new Date(course.date + 'T00:00:00').getDay();
+  const weekdayName = WEEKDAY_NAMES[currentDay];
+  
+  // 获取同组中各星期几的数量
+  const weekdayCounts = {};
+  groupCourses.forEach(c => {
+    const d = new Date(c.date + 'T00:00:00').getDay();
+    weekdayCounts[d] = (weekdayCounts[d] || 0) + 1;
+  });
+  
+  // 当前星期几的课程数量
+  const sameWeekdayCount = weekdayCounts[currentDay] || 0;
+  
+  let html = '';
+  
+  // 选项1：删除全部重复课程
+  html += `<button class="btn" style="text-align:left;padding:12px 16px;border:1px solid #ddd;border-radius:8px;justify-content:flex-start;" 
+    onclick="doDeleteRepeat('all')">
+    <div style="font-weight:600;color:#e03131;">删除全部重复课程</div>
+    <div style="font-size:12px;color:#888;margin-top:2px;">共 ${groupCourses.length} 节课，全部删除</div>
+  </button>`;
+  
+  // 选项2：删除同星期几的课程（只在同组有多个星期几时才显示）
+  const weekdayCount = Object.keys(weekdayCounts).length;
+  if (weekdayCount > 1 && sameWeekdayCount > 1) {
+    html += `<button class="btn" style="text-align:left;padding:12px 16px;border:1px solid #ddd;border-radius:8px;justify-content:flex-start;" 
+      onclick="doDeleteRepeat('weekday')">
+      <div style="font-weight:600;color:#e8590c;">删除所有${weekdayName}的课程</div>
+      <div style="font-size:12px;color:#888;margin-top:2px;">共 ${sameWeekdayCount} 节${weekdayName}的课，其他日期不受影响</div>
+    </button>`;
+  }
+  
+  // 选项3：仅删除这一次
+  html += `<button class="btn" style="text-align:left;padding:12px 16px;border:1px solid #ddd;border-radius:8px;justify-content:flex-start;" 
+    onclick="doDeleteRepeat('one')">
+    <div style="font-weight:600;color:#555;">仅删除这一次</div>
+    <div style="font-size:12px;color:#888;margin-top:2px;">只删除 ${course.date} 的这节课</div>
+  </button>`;
+  
+  optionsDiv.innerHTML = html;
+  modal.style.display = 'flex';
+}
+
+async function doDeleteRepeat(mode) {
+  const course = DB.courses.find(c => c.id === editingCourseId);
+  if (!course) return;
+  
+  let url = '/api/courses/' + editingCourseId;
+  let confirmMsg = '';
+  
+  if (mode === 'all') {
+    url += '?all=1';
+    confirmMsg = `确定删除全部重复课程吗？此操作不可撤销（可使用撤销按钮恢复）。`;
+  } else if (mode === 'weekday') {
+    url += '?weekday=1';
+    const WEEKDAY_NAMES = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const wd = WEEKDAY_NAMES[new Date(course.date + 'T00:00:00').getDay()];
+    confirmMsg = `确定删除所有${wd}的课程吗？（共${DB.courses.filter(c => c.repeatGroupId === course.repeatGroupId && new Date(c.date + 'T00:00:00').getDay() === new Date(course.date + 'T00:00:00').getDay()).length}节）`;
+  } else {
+    confirmMsg = `确定仅删除 ${course.date} 的「${course.name}」吗？`;
+  }
+  
+  if (!confirm(confirmMsg)) return;
+  
+  try {
+    const res = await api(url, 'DELETE');
+    closeDeleteRepeatModal();
+    closeCourseModal();
+    if (res.deleted) {
+      // 批量删除成功
+    }
+  } catch (e) {
+    alert(e.message || '删除失败');
+  }
+}
+
+/* ============================================================
+   CSV 导出
+   ============================================================ */
+function exportCSV() {
+  const studentFilter = document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '';
+  const teacherFilter = document.getElementById('teacherFilter').value;
+  let startDate, endDate, rangeLabel;
+
+  if (studentFilter) {
+    // 学生排课表：使用与渲染相同的日期范围逻辑
+    if (currentView === 'day') {
+      startDate = endDate = new Date(currentDate);
+      rangeLabel = `${currentDate.getFullYear()}年${currentDate.getMonth()+1}月${currentDate.getDate()}日`;
+    } else if (currentView === 'week') {
+      const dates = getWeekDates(currentDate);
+      startDate = dates[0]; endDate = dates[6];
+      rangeLabel = `${startDate.getMonth()+1}月${startDate.getDate()}日-${endDate.getMonth()+1}月${endDate.getDate()}日`;
+    } else if (currentView === 'term') {
+      const sel = document.getElementById('termMonthCount');
+      const mc = sel ? parseInt(sel.value) : 3;
+      startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + mc, 0);
+      rangeLabel = `${currentDate.getFullYear()}年${currentDate.getMonth()+1}月-${currentDate.getMonth()+mc}月`;
+    } else if (currentView === 'custom') {
+      const sd = document.getElementById('customStartDate');
+      const ed = document.getElementById('customEndDate');
+      startDate = sd && sd.value ? dateFromStr(sd.value) : new Date();
+      endDate = ed && ed.value ? dateFromStr(ed.value) : new Date();
+      if (startDate > endDate) { const tmp = startDate; startDate = endDate; endDate = tmp; }
+      if (formatDateStr(startDate) === formatDateStr(endDate)) {
+        rangeLabel = `${startDate.getFullYear()}年${startDate.getMonth()+1}月${startDate.getDate()}日`;
+      } else {
+        rangeLabel = `${startDate.getMonth()+1}月${startDate.getDate()}日-${endDate.getMonth()+1}月${endDate.getDate()}日`;
+      }
+    } else {
+      startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      rangeLabel = `${currentDate.getFullYear()}年${currentDate.getMonth()+1}月`;
+    }
+  } else if (currentView === 'day') {
+    startDate = endDate = new Date(currentDate);
+    rangeLabel = formatDateStr(currentDate);
+  } else if (currentView === 'week') {
+    const dates = getWeekDates(currentDate);
+    startDate = dates[0]; endDate = dates[6];
+    rangeLabel = `${formatDateStr(startDate)}_${formatDateStr(endDate)}`;
+  } else if (currentView === 'term') {
+    const sel = document.getElementById('termMonthCount');
+    const mc = sel ? parseInt(sel.value) : 3;
+    startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + mc, 0);
+    rangeLabel = `${formatDateStr(startDate)}_${formatDateStr(endDate)}`;
+  } else if (currentView === 'custom') {
+    const sd = document.getElementById('customStartDate');
+    const ed = document.getElementById('customEndDate');
+    startDate = sd && sd.value ? dateFromStr(sd.value) : new Date();
+    endDate = ed && ed.value ? dateFromStr(ed.value) : new Date();
+    if (startDate > endDate) { const tmp = startDate; startDate = endDate; endDate = tmp; }
+    rangeLabel = `${formatDateStr(startDate)}_${formatDateStr(endDate)}`;
+  } else {
+    startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    rangeLabel = `${currentDate.getFullYear()}年${currentDate.getMonth()+1}月`;
+  }
+
+  const startStr = formatDateStr(startDate);
+  const endStr = formatDateStr(endDate);
+  // 课程 date 已是排课时区日期，直接按 date 过滤
+  let list = DB.courses.filter(c => c.date >= startStr && c.date <= endStr);
+  if (teacherFilter) list = list.filter(c => c.teacherId === teacherFilter);
+  if (studentFilter) list = list.filter(c => c.studentIds && c.studentIds.includes(studentFilter));
+  list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+
+  // 判断是否有跨时区课程（排课时区非北京）
+  const hasTzCourses = list.some(c => c.timezone && c.timezone !== 'Asia/Shanghai');
+  
+  let headers, rows;
+  
+  if (hasTzCourses) {
+    // 跨时区模式：每节课输出两行（老师行+学生行）
+    headers = ['课程名称','角色','日期','星期','开始时间','结束时间','时区','地点','授课老师','关联学生','描述','颜色'];
+    rows = [];
+    list.forEach(c => {
+      const teacher = getTeacherById(c.teacherId);
+      const teacherName = studentFilter ? getTeacherShortName(c) : getTeacherDisplayName(c);
+      const studentNames = (c.studentIds || []).map(sid => {
+        const s = DB.students.find(x => x.id === sid);
+        return s ? s.name : '';
+      }).filter(Boolean).join('、');
+      
+      const courseTz = c.timezone || 'Asia/Shanghai';
+      const cTzName = getTimezoneShortName(courseTz);
+      const cTzOffset = getTimezoneOffset(courseTz);
+      
+      // 学生行（当地时间，就是课程原始日期和时间）
+      const localWd = WEEK_NAMES[dateFromStr(c.date).getDay()];
+      rows.push([c.name, '学生(' + cTzName + ')', c.date, localWd, c.startTime, c.endTime, cTzOffset, c.location || '', teacherName, studentNames, c.description || '', c.color]);
+      
+      // 老师行（北京时间）
+      const bjStart = convertTimezone(c.date, c.startTime, courseTz, 'Asia/Shanghai');
+      const bjEnd = convertTimezone(c.date, c.endTime, courseTz, 'Asia/Shanghai');
+      const bjWd = WEEK_NAMES[dateFromStr(bjStart.date).getDay()];
+      rows.push([c.name, '老师(北京)', bjStart.date, bjWd, bjStart.time, bjEnd.time, 'UTC+8', c.location || '', teacherName, studentNames, c.description || '', c.color]);
+    });
+  } else {
+    // 普通模式：一行一节课
+    headers = ['课程名称','日期','星期','开始时间','结束时间','地点','授课老师','关联学生','描述','颜色'];
+    rows = list.map(c => {
+      const teacher = getTeacherById(c.teacherId);
+      const teacherName = studentFilter ? getTeacherShortName(c) : getTeacherDisplayName(c);
+      const wd = WEEK_NAMES[dateFromStr(c.date).getDay()];
+      const studentNames = (c.studentIds || []).map(sid => {
+        const s = DB.students.find(x => x.id === sid);
+        return s ? s.name : '';
+      }).filter(Boolean).join('、');
+      return [c.name, c.date, wd, c.startTime, c.endTime, c.location || '', teacherName, studentNames, c.description || '', c.color];
+    });
+  }
+
+  // CSV with BOM for Excel
+  let csv = '\uFEFF' + headers.join(',') + '\n';
+  rows.forEach(r => {
+    csv += r.map(cell => {
+      const s = String(cell == null ? '' : cell);
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',') + '\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  // 文件名包含筛选信息
+  let fileSuffix = '';
+  if (studentFilter) {
+    const stu = DB.students.find(s => s.id === studentFilter);
+    fileSuffix += '_' + (stu ? stu.name : '') + '排课表';
+    if (hasTzCourses) {
+      fileSuffix += '_含跨时区';
+    }
+  } else if (teacherFilter) {
+    const tName = teacherFilter === 'guest' ? '兼职老师' : (getTeacherById(teacherFilter) ? getTeacherById(teacherFilter).name : '');
+    fileSuffix += '_' + tName;
+  }
+  a.download = `排课_${rangeLabel}${fileSuffix}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   导出下拉菜单
+   ============================================================ */
+function toggleExportMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('exportMenu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+function closeExportMenu() {
+  document.getElementById('exportMenu').style.display = 'none';
+}
+// 点击其他地方关闭菜单
+document.addEventListener('click', () => closeExportMenu());
+
+/* ============================================================
+   图片导出 (PNG)
+   ============================================================ */
+function exportImage() {
+  // 找到当前可见的页面容器
+  const container = document.getElementById('calendarContainer');
+  if (!container) { alert('找不到日历内容'); return; }
+
+  // 显示遮罩提示
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = '<div style="background:#fff;padding:20px 30px;border-radius:10px;font-size:15px;">正在生成图片，请稍候...</div>';
+  document.body.appendChild(overlay);
+
+  const studentFilter = document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '';
+  const teacherFilter = document.getElementById('teacherFilter').value;
+
+  // 获取文件名和范围标签
+  let rangeLabel = '';
+  let fileSuffix = '';
+
+  if (studentFilter) {
+    // 学生排课表视图：使用渲染时存储的范围标签
+    const student = DB.students.find(s => s.id === studentFilter);
+    const sName = student ? student.name : '';
+    rangeLabel = container.dataset.ssRangeLabel || (currentDate.getFullYear() + '年' + (currentDate.getMonth()+1) + '月');
+    fileSuffix = '_' + sName + '排课表';
+  } else {
+    if (currentView === 'day') {
+      rangeLabel = formatDateStr(currentDate);
+    } else if (currentView === 'week') {
+      const dates = getWeekDates(currentDate);
+      rangeLabel = formatDateStr(dates[0]) + '_' + formatDateStr(dates[6]);
+    } else if (currentView === 'term') {
+      const sel = document.getElementById('termMonthCount');
+      const mc = sel ? parseInt(sel.value) : 3;
+      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + mc, 0);
+      rangeLabel = formatDateStr(startDate) + '_' + formatDateStr(endDate);
+    } else if (currentView === 'custom') {
+      const sd = document.getElementById('customStartDate');
+      const ed = document.getElementById('customEndDate');
+      const sv = sd ? sd.value : '';
+      const ev = ed ? ed.value : '';
+      rangeLabel = sv + '_' + ev;
+    } else {
+      rangeLabel = currentDate.getFullYear() + '年' + (currentDate.getMonth()+1) + '月';
+    }
+    if (teacherFilter) {
+      const tName = teacherFilter === 'guest' ? '兼职老师' : (getTeacherById(teacherFilter) ? getTeacherById(teacherFilter).name : '');
+      fileSuffix += '_' + tName;
+    }
+  }
+  const fileName = '排课_' + rangeLabel + fileSuffix + '.png';
+
+  // 使用克隆方式导出，避免父容器 overflow:hidden 截断内容
+  setTimeout(() => {
+    // 克隆排课内容到临时容器，脱离所有限制
+    const cloneContainer = document.createElement('div');
+    cloneContainer.style.cssText = 'position:absolute;left:-99999px;top:0;width:' + container.offsetWidth + 'px;background:#fff;padding:0;overflow:visible;';
+    // 克隆学生排课表或日历内容
+    const wrapEl = container.querySelector('.student-schedule-wrap');
+    if (wrapEl) {
+      cloneContainer.appendChild(wrapEl.cloneNode(true));
+    } else {
+      cloneContainer.innerHTML = container.innerHTML;
+    }
+    document.body.appendChild(cloneContainer);
+
+    // 临时移除克隆内所有固定高度限制
+    cloneContainer.querySelectorAll('.ss-content-cell').forEach(cell => {
+      cell.style.height = 'auto';
+      cell.style.minHeight = '50px';
+    });
+
+    html2canvas(cloneContainer, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      width: cloneContainer.scrollWidth,
+      height: cloneContainer.scrollHeight,
+      windowWidth: cloneContainer.scrollWidth,
+      windowHeight: cloneContainer.scrollHeight
+    }).then(canvas => {
+      document.body.removeChild(cloneContainer);
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        document.body.removeChild(overlay);
+      });
+    }).catch(err => {
+      document.body.removeChild(cloneContainer);
+      document.body.removeChild(overlay);
+      alert('导出图片失败：' + err.message);
+    });
+  }, 100);
+}
+
+/* ============================================================
+   工具
+   ============================================================ */
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function toggleSidebar(open) {
+  document.getElementById('sidebar').classList.toggle('open', open);
+  document.getElementById('sidebarBackdrop').classList.toggle('active', open);
+}
+
+/* ---------- 键盘交互 ---------- */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeCourseModal(); closeTeacherModal(); }
+  if (e.key === 'Enter' && document.getElementById('loginView').style.display !== 'none') {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') handleLogin();
+  }
+});
+
+// 点击空白关闭弹窗
+document.getElementById('courseModal').addEventListener('click', e => {
+  if (e.target.id === 'courseModal') closeCourseModal();
+});
+document.getElementById('teacherModal').addEventListener('click', e => {
+  if (e.target.id === 'teacherModal') closeTeacherModal();
+});
+document.getElementById('deleteRepeatModal').addEventListener('click', e => {
+  if (e.target.id === 'deleteRepeatModal') closeDeleteRepeatModal();
+});
+
+/* ---------- 初始化 ---------- */
+// 页面关闭/刷新前自动保存状态（备份机制）
+window.addEventListener('beforeunload', () => {
+  if (currentUser) saveAppState();
+});
+
+(async () => {
+  const loggedIn = await checkSession();
+  if (loggedIn) {
+    initSocket();
+    enterApp();
+  } else {
+    document.getElementById('loginView').style.display = 'flex';
+  }
+})();
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>
