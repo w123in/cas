@@ -413,18 +413,10 @@ app.get('/api/session', (req, res) => {
 });
 
 app.get('/api/data', authRequired, (req, res) => {
-  // 老师角色只返回自己的课程
-  let courses = DB.courses;
-  if (req.user.role === 'teacher') {
-    const teacher = DB.teachers.find(t => t.username === req.user.username);
-    if (teacher) {
-      courses = DB.courses.filter(c => c.teacherId === teacher.id);
-    }
-  }
   res.json({
     teachers: DB.teachers,
     students: DB.students,
-    courses,
+    courses: DB.courses,
     currentUser: req.user
   });
 });

@@ -158,6 +158,7 @@ a { color: var(--primary); text-decoration: none; }
 .content { flex: 1; overflow: hidden; position: relative; }
 .page { display: none; height: 100%; }
 .page.active { display: block; }
+.student-dropdown-item:hover { background: #f0f4ff; }
 /* 学生排课表视图需要可滚动 */
 #page-calendar #calendarContainer { height: 100%; overflow-y: auto; }
 
@@ -543,7 +544,12 @@ a { color: var(--primary); text-decoration: none; }
       <div class="topbar-spacer"></div>
       <div class="toolbar-group" id="calendarToolbar">
         <select class="filter-select" id="teacherFilter" onchange="renderCurrentView(); saveAppState()" title="按老师筛选"><option value="">全部老师</option></select>
-        <select class="filter-select" id="studentFilter" onchange="renderCurrentView(); saveAppState()" title="按学生筛选"><option value="">全部学生</option></select>
+        <div class="student-filter-wrapper" style="position:relative; display:inline-block;">
+          <input type="text" id="studentSearchInput" class="filter-select" placeholder="搜索学生..." autocomplete="off"
+            oninput="filterStudentDropdown()" onfocus="showStudentDropdown()" onblur="setTimeout(()=>hideStudentDropdown(),200)" title="按学生筛选" style="cursor:text; min-width:110px;">
+          <input type="hidden" id="studentFilter" value="">
+          <div id="studentDropdown" style="display:none; position:absolute; top:100%; left:0; min-width:100%; max-height:240px; overflow-y:auto; background:#fff; border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:200; margin-top:2px;"></div>
+        </div>
         <div class="date-nav">
           <button class="btn-icon" onclick="navigateDate(-1)" title="上一个">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -1087,11 +1093,6 @@ function initSocket() {
   socket = io({ transports: ['websocket', 'polling'] });
 
   socket.on('course_created', (course) => {
-    // 老师角色只接收自己的课程
-    if (currentUser.role === 'teacher') {
-      const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
-      if (!myTeacher || course.teacherId !== myTeacher.id) return;
-    }
     if (!DB.courses.find(c => c.id === course.id)) {
       DB.courses.push(course);
       renderCurrentView();
@@ -1100,11 +1101,6 @@ function initSocket() {
   });
 
   socket.on('course_updated', (course) => {
-    // 老师角色只接收自己的课程
-    if (currentUser.role === 'teacher') {
-      const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
-      if (!myTeacher || course.teacherId !== myTeacher.id) return;
-    }
     const idx = DB.courses.findIndex(c => c.id === course.id);
     if (idx >= 0) {
       DB.courses[idx] = course;
@@ -1114,14 +1110,6 @@ function initSocket() {
   });
 
   socket.on('course_deleted', (data) => {
-    // 老师角色只处理自己课程的删除
-    if (currentUser.role === 'teacher') {
-      const course = DB.courses.find(c => c.id === data.id);
-      if (course) {
-        const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
-        if (!myTeacher || course.teacherId !== myTeacher.id) return;
-      }
-    }
     DB.courses = DB.courses.filter(c => c.id !== data.id);
     renderCurrentView();
     if (currentPage === 'teachers') renderTeachersPage();
@@ -1352,8 +1340,8 @@ function enterApp() {
       const d = new Date(saved.date);
       if (!isNaN(d.getTime())) currentDate = d;
     }
-    // 恢复老师筛选器（老师角色跳过，因为已锁定）
-    if (currentUser.role !== 'teacher' && saved.teacherFilter) {
+    // 恢复老师筛选器
+    if (saved.teacherFilter) {
       const tf = document.getElementById('teacherFilter');
       if (tf) tf.value = saved.teacherFilter;
     }
@@ -1361,6 +1349,11 @@ function enterApp() {
     if (saved.studentFilter) {
       const sf = document.getElementById('studentFilter');
       if (sf) sf.value = saved.studentFilter;
+      const ssi = document.getElementById('studentSearchInput');
+      if (ssi && saved.studentFilter) {
+        const student = DB.students.find(s => s.id === saved.studentFilter);
+        if (student) ssi.value = student.name;
+      }
     }
     // 恢复学期月数
     if (saved.termMonthCount) {
@@ -1378,8 +1371,8 @@ function enterApp() {
     }
     // 恢复视图UI并渲染
     switchView(currentView);
-    // 恢复页面（非老师角色才允许切换页面）
-    if (saved.page && currentUser.role !== 'teacher' && saved.page !== 'calendar') {
+    // 恢复页面
+    if (saved.page && saved.page !== 'calendar') {
       switchPage(saved.page);
     } else {
       renderCurrentView();
@@ -1423,15 +1416,8 @@ function canCreateCourse() {
 }
 
 function applyPermission() {
-  // 老师角色锁定只看自己的课程
   const filter = document.getElementById('teacherFilter');
-  if (currentUser.role === 'teacher') {
-    const teacher = DB.teachers.find(t => t.username === currentUser.username);
-    if (teacher) filter.value = teacher.id;
-    filter.disabled = true; // 锁定，不允许切换
-  } else {
-    filter.disabled = false;
-  }
+  filter.disabled = false;
   // 所有角色都可以创建课程
   const newBtn = document.getElementById('newCourseBtn');
   if (newBtn) newBtn.style.display = canCreateCourse() ? '' : 'none';
@@ -1500,25 +1486,54 @@ function initTeacherFilter() {
   guestOpt.value = 'guest';
   guestOpt.textContent = '兼职老师';
   sel.appendChild(guestOpt);
-  // 老师默认锁定自己
-  if (currentUser.role === 'teacher') {
-    const teacher = DB.teachers.find(t => t.username === currentUser.username);
-    if (teacher) sel.value = teacher.id;
-  }
 }
 
 function initStudentFilter() {
-  const sel = document.getElementById('studentFilter');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">全部学生</option>';
-  DB.students.forEach(s => {
-    // 跳过默认名（学生N）未改名的
-    if (/^学生\d+$/.test(s.name)) return;
-    const opt = document.createElement('option');
-    opt.value = s.id;
-    opt.textContent = s.name;
-    sel.appendChild(opt);
+  const hidden = document.getElementById('studentFilter');
+  if (!hidden) return;
+  hidden.value = '';
+  const input = document.getElementById('studentSearchInput');
+  if (input) input.value = '';
+}
+
+function getFilteredStudents() {
+  return DB.students.filter(s => !/^学生\d+$/.test(s.name));
+}
+
+function filterStudentDropdown() {
+  const input = document.getElementById('studentSearchInput');
+  if (!input) return;
+  const keyword = input.value.trim().toLowerCase();
+  const dropdown = document.getElementById('studentDropdown');
+  let html = '<div class="student-dropdown-item" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-light); font-size:13px;" onmousedown="selectStudentFilter(\'\',\'全部学生\')"><b>全部学生</b></div>';
+  getFilteredStudents().forEach(s => {
+    if (!keyword || s.name.toLowerCase().includes(keyword)) {
+      html += `<div class="student-dropdown-item" style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-light); font-size:13px;" onmousedown="selectStudentFilter('${s.id}','${s.name.replace(/'/g, "\\'")}')">${s.name}</div>`;
+    }
   });
+  if (dropdown) dropdown.innerHTML = html;
+}
+
+function showStudentDropdown() {
+  const dropdown = document.getElementById('studentDropdown');
+  if (!dropdown) return;
+  filterStudentDropdown();
+  dropdown.style.display = 'block';
+}
+
+function hideStudentDropdown() {
+  const dropdown = document.getElementById('studentDropdown');
+  if (dropdown) dropdown.style.display = 'none';
+}
+
+function selectStudentFilter(id, name) {
+  const hidden = document.getElementById('studentFilter');
+  const input = document.getElementById('studentSearchInput');
+  if (hidden) hidden.value = id;
+  if (input) input.value = id ? name : '';
+  hideStudentDropdown();
+  renderCurrentView();
+  saveAppState();
 }
 
 let selectedStudentIds = []; // 当前选中关联的学生ID列表
@@ -1787,11 +1802,7 @@ function getFilteredCourses() {
   const teacherFilter = document.getElementById('teacherFilter').value;
   const studentFilter = document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '';
   let list = DB.courses.slice();
-  // 老师角色强制只看自己的课程
-  if (currentUser && currentUser.role === 'teacher') {
-    const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
-    if (myTeacher) list = list.filter(c => c.teacherId === myTeacher.id);
-  } else if (teacherFilter) {
+  if (teacherFilter) {
     list = list.filter(c => c.teacherId === teacherFilter);
   }
   if (studentFilter) list = list.filter(c => c.studentIds && c.studentIds.includes(studentFilter));
