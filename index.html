@@ -665,6 +665,9 @@ a { color: var(--primary); text-decoration: none; }
           <button class="view-tab" data-view="term" onclick="switchView('term')">学期</button>
           <button class="view-tab" data-view="custom" onclick="switchView('custom')">自定义</button>
         </div>
+        <button class="btn btn-sm" id="scheduleToggleBtn" onclick="toggleScheduleView()" style="display:none;" title="切换课表视图">
+          <span class="hide-mobile">课表视图</span>
+        </button>
         <div id="customRangePicker" style="display:none;align-items:center;gap:4px;">
           <input type="date" id="customStartDate" class="filter-select" style="width:130px;font-size:12px;" onchange="renderCurrentView(); saveAppState()">
           <span style="font-size:12px;color:#666;">至</span>
@@ -1398,6 +1401,7 @@ function saveAppState() {
       date: currentDate.toISOString(),
       teacherFilter: document.getElementById('teacherFilter') ? document.getElementById('teacherFilter').value : '',
       studentFilter: document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '',
+      scheduleMode: scheduleMode,
       termMonthCount: document.getElementById('termMonthCount') ? document.getElementById('termMonthCount').value : '3',
       customStart: document.getElementById('customStartDate') ? document.getElementById('customStartDate').value : '',
       customEnd: document.getElementById('customEndDate') ? document.getElementById('customEndDate').value : ''
@@ -1452,6 +1456,18 @@ function enterApp() {
         const student = DB.students.find(s => s.id === saved.studentFilter);
         if (student) ssi.value = student.name;
       }
+      // 显示课表视图切换按钮
+      const schedBtn = document.getElementById('scheduleToggleBtn');
+      if (schedBtn) schedBtn.style.display = '';
+    }
+    // 恢复课表视图模式
+    if (saved.scheduleMode) {
+      scheduleMode = saved.scheduleMode;
+      const schedBtn = document.getElementById('scheduleToggleBtn');
+      if (schedBtn) {
+        schedBtn.innerHTML = scheduleMode ? '<span class="hide-mobile">日历视图</span>' : '<span class="hide-mobile">课表视图</span>';
+        schedBtn.classList.toggle('btn-primary', scheduleMode);
+      }
     }
     // 恢复学期月数
     if (saved.termMonthCount) {
@@ -1502,8 +1518,12 @@ function canEditCourse(course) {
   if (currentUser.role === 'admin') return true;
   if (currentUser.role === 'scheduler') return true;
   if (currentUser.role === 'teacher') {
-    const teacher = DB.teachers.find(t => t.username === currentUser.username);
-    return teacher && course.teacherId === teacher.id;
+    if (!course) return false;
+    // 自己创建的课 或 自己教的课，都可以改
+    if (course.createdBy === currentUser.username) return true;
+    const myTeacher = DB.teachers.find(t => t.username === currentUser.username);
+    if (myTeacher && course.teacherId === myTeacher.id) return true;
+    return false;
   }
   return false;
 }
@@ -1630,6 +1650,15 @@ function selectStudentFilter(id, name) {
   if (hidden) hidden.value = id;
   if (input) input.value = id ? name : '';
   hideStudentDropdown();
+  // 显示/隐藏课表视图切换按钮
+  const schedBtn = document.getElementById('scheduleToggleBtn');
+  if (schedBtn) schedBtn.style.display = id ? '' : 'none';
+  // 切换学生时重置为日历视图模式
+  scheduleMode = false;
+  if (schedBtn) {
+    schedBtn.innerHTML = '<span class="hide-mobile">课表视图</span>';
+    schedBtn.classList.remove('btn-primary');
+  }
   renderCurrentView();
   saveAppState();
 }
@@ -1986,9 +2015,9 @@ function checkMobileView() {
 function renderCurrentView() {
   checkMobileView();
   updateDateLabel();
-  // 学生筛选时使用专属表格视图
+  // 选中学生且开启课表模式时，使用课表视图
   const studentFilter = document.getElementById('studentFilter') ? document.getElementById('studentFilter').value : '';
-  if (studentFilter) {
+  if (studentFilter && scheduleMode) {
     renderStudentSchedule();
     return;
   }
@@ -1997,6 +2026,18 @@ function renderCurrentView() {
   else if (currentView === 'month') renderMonthView();
   else if (currentView === 'term') renderTermView();
   else if (currentView === 'custom') renderCustomRangeView();
+}
+
+var scheduleMode = false;
+function toggleScheduleView() {
+  scheduleMode = !scheduleMode;
+  const btn = document.getElementById('scheduleToggleBtn');
+  if (btn) {
+    btn.innerHTML = scheduleMode ? '<span class="hide-mobile">日历视图</span>' : '<span class="hide-mobile">课表视图</span>';
+    btn.classList.toggle('btn-primary', scheduleMode);
+  }
+  renderCurrentView();
+  saveAppState();
 }
 
 function updateDateLabel() {

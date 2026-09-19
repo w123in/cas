@@ -797,8 +797,12 @@ app.get('/api/undo-status', authRequired, (req, res) => {
 function canEditCourse(user, course) {
   if (user.role === 'admin' || user.role === 'scheduler') return true;
   if (user.role === 'teacher') {
+    if (!course) return false;
+    // 自己创建的课 或 自己教的课，都可以改
+    if (course.createdBy === user.username) return true;
     const teacher = DB.teachers.find(t => t.username === user.username);
-    return teacher && course.teacherId === teacher.id;
+    if (teacher && course.teacherId === teacher.id) return true;
+    return false;
   }
   return false;
 }
