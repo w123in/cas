@@ -192,6 +192,39 @@ a { color: var(--primary); text-decoration: none; }
 .course-card.compact { padding: 3px 6px; }
 .course-card.compact .cc-title { font-size: 11px; }
 
+/* 重叠课程角标 */
+.overlap-badge {
+  position: absolute; top: 2px; right: 2px;
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 600;
+  padding: 1px 5px; border-radius: 10px;
+  cursor: pointer; z-index: 10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.overlap-badge:hover { background: var(--primary-dark); }
+
+/* 重叠课程弹出菜单 */
+.overlap-menu {
+  position: fixed; z-index: 600;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-lg);
+  min-width: 200px; max-width: 280px;
+  max-height: 300px; overflow-y: auto;
+  padding: 4px 0;
+}
+.overlap-menu-title {
+  padding: 8px 12px; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); border-bottom: 1px solid var(--border-light);
+}
+.overlap-menu-item {
+  padding: 8px 12px; cursor: pointer; font-size: 13px;
+  border-left: 3px solid transparent; display: flex;
+  align-items: center; gap: 8px;
+}
+.overlap-menu-item:hover { background: #f0f4ff; }
+.overlap-menu-item .omi-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.overlap-menu-item .omi-time { font-size: 11px; color: var(--text-muted); }
+
 /* ============ 周视图 ============ */
 .week-view-wrap { height: 100%; display: flex; flex-direction: column; }
 .week-header {
@@ -2265,19 +2298,66 @@ function renderWeekView() {
     // 课程事件层
     html += `<div class="week-events">`;
     const placed = [];
+    const MAX_VISIBLE_COLS = 3; // 最多并排显示3门课
+
+    // 第一步：计算每门课的重叠列
     dayCourses.forEach(c => {
       const startMin = parseTimeToMinutes(c.startTime);
       const endMin = parseTimeToMinutes(c.endTime);
-      const top = ((startMin - DAY_START * 60) / 60) * HOUR_HEIGHT;
-      const height = Math.max(18, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
       let col = 0;
       while (true) {
         const conflict = placed.find(p => p.col === col && !(endMin <= p.startMin || startMin >= p.endMin));
         if (!conflict) break;
         col++;
       }
-      placed.push({ col, startMin, endMin });
-      const widthPct = 100 / (col + 1);
+      placed.push({ col, startMin, endMin, course: c });
+    });
+
+    // 第二步：对每个时间段，计算实际需要显示的列数（超过MAX_VISIBLE_COLS则只显示第一列）
+    const overlapGroups = {}; // key: 时间区间标识 -> { overlapCount, visibleCols }
+    placed.forEach(p => {
+      const c = p.course;
+      const startMin = p.startMin;
+      const endMin = p.endMin;
+      // 找出与这门课重叠的所有课程
+      const overlapCourses = dayCourses.filter(dc => {
+        const ds = parseTimeToMinutes(dc.startTime);
+        const de = parseTimeToMinutes(dc.endTime);
+        return !(de <= startMin || ds >= endMin);
+      });
+      p.overlapCount = overlapCourses.length;
+      p.visibleCol = p.col < MAX_VISIBLE_COLS ? p.col : -1; // 超过3门的隐藏
+    });
+
+    // 第三步：计算每门课的显示宽度
+    placed.forEach(p => {
+      const c = p.course;
+      const startMin = p.startMin;
+      const endMin = p.endMin;
+      // 找同一时间组最大列数
+      let maxColInGroup = 0;
+      placed.forEach(p2 => {
+        const ds = parseTimeToMinutes(p2.course.startTime);
+        const de = parseTimeToMinutes(p2.course.endTime);
+        if (!(de <= startMin || ds >= endMin)) {
+          if (p2.col > maxColInGroup) maxColInGroup = p2.col;
+        }
+      });
+      const totalCols = maxColInGroup + 1;
+      const visibleCols = Math.min(totalCols, MAX_VISIBLE_COLS);
+      p.visibleCols = visibleCols;
+    });
+
+    // 第四步：渲染课程卡片
+    placed.forEach(p => {
+      if (p.visibleCol < 0) return; // 超过3门的不直接显示（通过角标访问）
+      const c = p.course;
+      const startMin = p.startMin;
+      const endMin = p.endMin;
+      const top = ((startMin - DAY_START * 60) / 60) * HOUR_HEIGHT;
+      const height = Math.max(18, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
+      const col = p.visibleCol;
+      const widthPct = 100 / p.visibleCols;
       const leftPct = col * widthPct;
       const cmeta = getColorMeta(c.color);
       const teacher = getTeacherById(c.teacherId);
@@ -2285,6 +2365,8 @@ function renderWeekView() {
       const cardBg = isCancelled ? '#f0f0f3' : cmeta.bg;
       const cardText = isCancelled ? '#9097a8' : cmeta.text;
       const cardBorder = isCancelled ? '#c0c4cc' : c.color;
+      // 是否显示重叠角标：第一列且重叠数超过可见列数
+      const showBadge = p.overlapCount > MAX_VISIBLE_COLS && col === 0;
       html += `<div class="course-card ${height < 36 ? 'compact' : ''}"
         style="top:${top}px;height:${height}px;left:calc(${leftPct}% + 1px);width:calc(${widthPct}% - 4px);
         border-left-color:${cardBorder};background:${cardBg};${isCancelled ? 'opacity:0.7;' : ''}"
@@ -2292,6 +2374,7 @@ function renderWeekView() {
         <div class="cc-title" style="color:${cardText};${isCancelled ? 'text-decoration:line-through;' : ''}">${escapeHtml(c.name)}${isCancelled ? '<span style="font-size:10px;background:#9097a8;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;">取消</span>' : getRepeatBadge(c)}</div>
         <div class="cc-meta">${c.startTime}-${c.endTime} ${escapeHtml(getTeacherDisplayName(c))}</div>
         ${height >= 50 && c.location ? `<div class="cc-meta">${escapeHtml(c.location)}</div>` : ''}
+        ${showBadge ? `<div class="overlap-badge" onclick="event.stopPropagation(); showOverlapMenu(event, '${dateStr}', ${startMin}, ${endMin})">+${p.overlapCount}</div>` : ''}
       </div>`;
     });
     html += `</div></div>`;
@@ -3283,6 +3366,61 @@ function renderAttendanceStats(data) {
 /* ============================================================
    课程弹窗（新建/编辑）
    ============================================================ */
+function showOverlapMenu(event, dateStr, startMin, endMin) {
+  event.stopPropagation();
+  // 关闭已有的菜单
+  closeOverlapMenu();
+  const courses = getFilteredCourses().filter(c => {
+    if (c.date !== dateStr) return false;
+    const ds = parseTimeToMinutes(c.startTime);
+    const de = parseTimeToMinutes(c.endTime);
+    return !(de <= startMin || ds >= endMin);
+  });
+  if (courses.length === 0) return;
+
+  const menu = document.createElement('div');
+  menu.id = 'overlapMenu';
+  menu.className = 'overlap-menu';
+  let html = `<div class="overlap-menu-title">该时段共 ${courses.length} 节课</div>`;
+  courses.sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
+  courses.forEach(c => {
+    const cmeta = getColorMeta(c.color);
+    const isCancelled = c.status === 'cancelled';
+    html += `<div class="overlap-menu-item" style="border-left-color:${c.color};" onclick="closeOverlapMenu(); openCourseModal('${c.id}')">
+      <span class="omi-name" style="${isCancelled ? 'text-decoration:line-through;color:#999;' : ''}">${escapeHtml(c.name)}</span>
+      <span class="omi-time">${c.startTime}</span>
+    </div>`;
+  });
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+
+  // 定位菜单
+  const rect = event.target.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.bottom + 4;
+  // 防止超出右边界
+  if (left + 240 > window.innerWidth) {
+    left = window.innerWidth - 250;
+  }
+  // 防止超出下边界
+  if (top + 300 > window.innerHeight) {
+    top = rect.top - 8;
+    menu.style.transform = 'translateY(-100%)';
+  }
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+
+  // 点击其他地方关闭
+  setTimeout(() => {
+    document.addEventListener('click', closeOverlapMenu, { once: true });
+  }, 10);
+}
+
+function closeOverlapMenu() {
+  const menu = document.getElementById('overlapMenu');
+  if (menu) menu.remove();
+}
+
 function openCourseModal(courseId) {
   // 权限：老师只能编辑自己的，但可以查看别人的
   editingCourseId = courseId || null;
