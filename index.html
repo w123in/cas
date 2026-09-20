@@ -2213,22 +2213,62 @@ function renderDayView() {
 
   html += `<div class="day-events">`;
 
-  // 计算课程位置（处理重叠）
+  // 计算课程位置（处理重叠）— 智能策略：≤3门并排，>3门只显示首门+角标
+  const MAX_VISIBLE_COLS_DAY = 3;
   const placed = [];
+
+  // 第一步：计算每门课的重叠列
   courses.forEach(c => {
     const startMin = parseTimeToMinutes(c.startTime);
     const endMin = parseTimeToMinutes(c.endTime);
-    const top = ((startMin - DAY_START * 60) / 60) * HOUR_HEIGHT;
-    const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
-    // 找重叠列
     let col = 0;
     while (true) {
       const conflict = placed.find(p => p.col === col && !(endMin <= p.startMin || startMin >= p.endMin));
       if (!conflict) break;
       col++;
     }
-    placed.push({ col, startMin, endMin });
-    const widthPct = 100 / (col + 1);
+    placed.push({ col, startMin, endMin, course: c });
+  });
+
+  // 第二步：计算每门课的重叠数和可见列数
+  placed.forEach(p => {
+    const startMin = p.startMin;
+    const endMin = p.endMin;
+    const overlapCourses = courses.filter(dc => {
+      const ds = parseTimeToMinutes(dc.startTime);
+      const de = parseTimeToMinutes(dc.endTime);
+      return !(de <= startMin || ds >= endMin);
+    });
+    p.overlapCount = overlapCourses.length;
+    p.visibleCol = p.col < MAX_VISIBLE_COLS_DAY ? p.col : -1;
+  });
+
+  // 第三步：计算每门课的显示宽度
+  placed.forEach(p => {
+    const startMin = p.startMin;
+    const endMin = p.endMin;
+    let maxColInGroup = 0;
+    placed.forEach(p2 => {
+      const ds = p2.startMin;
+      const de = p2.endMin;
+      if (!(de <= startMin || ds >= endMin)) {
+        if (p2.col > maxColInGroup) maxColInGroup = p2.col;
+      }
+    });
+    const totalCols = maxColInGroup + 1;
+    p.visibleCols = Math.min(totalCols, MAX_VISIBLE_COLS_DAY);
+  });
+
+  // 第四步：渲染课程卡片
+  placed.forEach(p => {
+    if (p.visibleCol < 0) return;
+    const c = p.course;
+    const startMin = p.startMin;
+    const endMin = p.endMin;
+    const top = ((startMin - DAY_START * 60) / 60) * HOUR_HEIGHT;
+    const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_HEIGHT - 2);
+    const col = p.visibleCol;
+    const widthPct = 100 / p.visibleCols;
     const leftPct = col * widthPct;
     const cmeta = getColorMeta(c.color);
     const teacher = getTeacherById(c.teacherId);
@@ -2237,6 +2277,8 @@ function renderDayView() {
     const cardBg = isCancelled ? '#f0f0f3' : cmeta.bg;
     const cardText = isCancelled ? '#9097a8' : cmeta.text;
     const cardBorder = isCancelled ? '#c0c4cc' : c.color;
+    const showBadge = p.overlapCount > MAX_VISIBLE_COLS_DAY && col === 0;
+    const dateStr = formatDateStr(targetDate);
     html += `<div class="course-card ${height < 40 ? 'compact' : ''}" 
       style="top:${top}px;height:${height}px;left:${leftPct}%;width:calc(${widthPct}% - 6px);
       border-left-color:${cardBorder};background:${cardBg};${isCancelled ? 'opacity:0.7;' : ''}"
@@ -2244,6 +2286,7 @@ function renderDayView() {
       <div class="cc-title" style="color:${cardText};${isCancelled ? 'text-decoration:line-through;' : ''}">${escapeHtml(c.name)}${isCancelled ? '<span style="font-size:10px;background:#9097a8;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;">取消</span>' : getRepeatBadge(c)}</div>
       <div class="cc-meta">${c.startTime}-${c.endTime} · ${escapeHtml(getTeacherDisplayName(c))}</div>
       ${height >= 56 && c.location ? `<div class="cc-meta">${escapeHtml(c.location)}</div>` : ''}
+      ${showBadge ? `<div class="overlap-badge" onclick="event.stopPropagation(); showOverlapMenu(event, '${dateStr}', ${startMin}, ${endMin})">+${p.overlapCount}</div>` : ''}
     </div>`;
   });
 
