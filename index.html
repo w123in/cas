@@ -1470,10 +1470,14 @@ function enterApp() {
   if (saved) {
     // 恢复视图模式
     if (saved.view) currentView = saved.view;
-    // 恢复日期
+    // 恢复日期（只有同一天才恢复，跨天自动跳到今天）
     if (saved.date) {
       const d = new Date(saved.date);
-      if (!isNaN(d.getTime())) currentDate = d;
+      const today = new Date();
+      const isSameDay = d.getFullYear() === today.getFullYear()
+        && d.getMonth() === today.getMonth()
+        && d.getDate() === today.getDate();
+      if (!isNaN(d.getTime()) && isSameDay) currentDate = d;
     }
     // 恢复老师筛选器
     if (saved.teacherFilter) {
