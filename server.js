@@ -104,7 +104,8 @@ function initStudents(DB) {
     DB.students.push({
       id: 's' + i,
       name: '学生' + i,
-      timezone: 'Asia/Shanghai'
+      timezone: 'Asia/Shanghai',
+      status: 'active'
     });
   }
 }
@@ -191,6 +192,12 @@ function restoreSnapshot(snap) {
   DB.teachers = snap.teachers;
   DB.students = snap.students;
   DB.courses = snap.courses;
+  // 确保旧数据中学生有 status 字段
+  if (DB.students) {
+    DB.students.forEach(s => {
+      if (!s.status) s.status = 'active';
+    });
+  }
 }
 
 function saveHistory() {
@@ -668,12 +675,12 @@ app.get('/api/students', authRequired, (req, res) => {
   res.json(DB.students);
 });
 
-// 一键扩充学生到指定数量（默认100），不影响现有数据
+// 每次扩充指定数量的学生（默认20），不影响现有数据
 app.post('/api/students/expand', authRequired, (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'admin only' });
   }
-  const targetCount = parseInt(req.body.targetCount) || 100;
+  const count = parseInt(req.body.count) || 20;
   // 找当前最大数字编号
   let maxNum = 0;
   DB.students.forEach(s => {
@@ -681,11 +688,12 @@ app.post('/api/students/expand', authRequired, (req, res) => {
     if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
   });
   const added = [];
-  for (let i = maxNum + 1; i <= targetCount; i++) {
+  for (let i = maxNum + 1; i <= maxNum + count; i++) {
     const student = {
       id: 's' + i,
       name: '学生' + i,
-      timezone: 'Asia/Shanghai'
+      timezone: 'Asia/Shanghai',
+      status: 'active'
     };
     DB.students.push(student);
     added.push(student);
@@ -696,6 +704,14 @@ app.post('/api/students/expand', authRequired, (req, res) => {
     io.emit('data_updated', { students: DB.students });
   }
   res.json({ added: added.length, total: DB.students.length });
+});
+
+// 获取已完成服务的学生
+app.get('/api/students/completed', authRequired, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'admin only' });
+  }
+  res.json(DB.students.filter(s => s.status === 'completed'));
 });
 
 app.post('/api/students', authRequired, (req, res) => {
@@ -724,8 +740,9 @@ app.put('/api/students/:id', authRequired, (req, res) => {
   const student = DB.students.find(s => s.id === req.params.id);
   if (!student) return res.status(404).json({ error: 'student not found' });
   saveHistory();
-  const { name } = req.body;
+  const { name, status } = req.body;
   if (name) student.name = name.trim();
+  if (status) student.status = status;
   persist();
   io.emit('student_updated', student);
   res.json(student);

@@ -1648,7 +1648,7 @@ function initStudentFilter() {
 }
 
 function getFilteredStudents() {
-  return DB.students.filter(s => !/^学生\d+$/.test(s.name));
+  return DB.students.filter(s => s.status !== 'completed' && !/^学生\d+$/.test(s.name));
 }
 
 function filterStudentDropdown() {
@@ -1743,7 +1743,7 @@ function hideStudentResults() {
 function filterStudentResults() {
   const results = document.getElementById('studentSearchResults');
   const query = (document.getElementById('studentSearch').value || '').trim().toLowerCase();
-  let list = DB.students.filter(s => !selectedStudentIds.includes(s.id));
+  let list = DB.students.filter(s => s.status !== 'completed' && !selectedStudentIds.includes(s.id));
   // 跳过默认名（学生N）未改名的
   list = list.filter(s => !/^学生\d+$/.test(s.name));
   if (query) {
@@ -3034,11 +3034,19 @@ function renderSettingsPage() {
     <div style="display:flex;gap:8px;align-items:center;">
       <input type="text" id="settingsStudentSearch" placeholder="搜索学生..." oninput="renderStudentList()" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:160px;">
       <button class="btn btn-primary btn-sm" onclick="addStudentInline()">+ 添加</button>
-      <button class="btn btn-sm" style="background:#e8a317;color:#fff;" onclick="expandStudents()">扩充到100人</button>
+      <button class="btn btn-sm" style="background:#e8a317;color:#fff;" onclick="expandStudents()">+20人</button>
     </div>
   </div>
 
   <div id="studentListContainer"></div>
+
+  <div class="page-header" style="margin-top:32px;">
+    <div><h3 style="font-size:16px;">已完成服务学生</h3></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="completedStudentSearch" placeholder="搜索..." oninput="renderCompletedStudents()" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:160px;">
+    </div>
+  </div>
+  <div id="completedStudentListContainer"></div>
 
   <div class="page-header" style="margin-top:32px;">
     <div><h3 style="font-size:16px;">数据备份与恢复</h3></div>
@@ -3069,7 +3077,7 @@ function renderStudentList() {
   if (!container) return;
   const searchEl = document.getElementById('settingsStudentSearch');
   const query = (searchEl ? searchEl.value : '').trim().toLowerCase();
-  let list = DB.students;
+  let list = DB.students.filter(s => s.status !== 'completed');
   if (query) {
     list = list.filter(s => s.name.toLowerCase().includes(query));
   }
@@ -3087,6 +3095,7 @@ function renderStudentList() {
       </div>
       <div style="display:flex;gap:4px;margin-top:6px;">
         <button class="btn btn-sm" style="flex:1;padding:3px;">改名</button>
+        <button class="btn btn-sm" style="padding:3px 6px;background:#30a46c;color:#fff;" onclick="event.stopPropagation();completeStudent('${s.id}','${escapeHtml(s.name)}')">完成</button>
         <button class="btn btn-sm btn-danger" style="padding:3px 6px;" onclick="event.stopPropagation();deleteStudent('${s.id}','${escapeHtml(s.name)}')">删</button>
       </div>
     </div>`;
@@ -3096,6 +3105,90 @@ function renderStudentList() {
   }
   html += '</div>';
   container.innerHTML = html;
+  renderCompletedStudents();
+}
+
+function renderCompletedStudents() {
+  const container = document.getElementById('completedStudentListContainer');
+  if (!container) return;
+  const searchEl = document.getElementById('completedStudentSearch');
+  const query = (searchEl ? searchEl.value : '').trim().toLowerCase();
+  let list = DB.students.filter(s => s.status === 'completed');
+  if (query) {
+    list = list.filter(s => s.name.toLowerCase().includes(query));
+  }
+  if (list.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">暂无已完成服务的学生</div>';
+    return;
+  }
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">';
+  list.forEach(s => {
+    const courseCount = DB.courses.filter(c => c.studentIds && c.studentIds.includes(s.id)).length;
+    html += `<div style="background:#f0f0f3;border:1px solid #d4d4dc;border-radius:var(--radius-sm);padding:10px;opacity:0.85;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#9097a8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;">${s.name.charAt(s.name.length-1)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.name)}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${courseCount} 节课</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:6px;">
+        <button class="btn btn-sm" style="flex:1;padding:3px;background:#6c8eef;color:#fff;" onclick="reactivateStudent('${s.id}')">恢复在读</button>
+        <button class="btn btn-sm" style="padding:3px 6px;" onclick="viewStudentCourses('${s.id}','${escapeHtml(s.name)}')">查课</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function completeStudent(id, name) {
+  if (!confirm('确认将「' + name + '」标记为已完成服务？\n该学生将从在读名单中移除，可在下方「已完成服务学生」中查看。')) return;
+  try {
+    await api('/api/students/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed' })
+    });
+    const s = DB.students.find(x => x.id === id);
+    if (s) s.status = 'completed';
+    renderStudentList();
+    renderCompletedStudents();
+  } catch (e) {
+    alert('操作失败: ' + e.message);
+  }
+}
+
+async function reactivateStudent(id) {
+  if (!confirm('确认将该学生恢复为在读状态？')) return;
+  try {
+    await api('/api/students/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'active' })
+    });
+    const s = DB.students.find(x => x.id === id);
+    if (s) s.status = 'active';
+    renderStudentList();
+    renderCompletedStudents();
+  } catch (e) {
+    alert('操作失败: ' + e.message);
+  }
+}
+
+function viewStudentCourses(id, name) {
+  const studentCourses = DB.courses.filter(c => c.studentIds && c.studentIds.includes(id));
+  if (studentCourses.length === 0) {
+    alert('「' + name + '」暂无课程记录');
+    return;
+  }
+  let msg = '「' + name + '」的课程记录:\n\n';
+  studentCourses.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  studentCourses.forEach(c => {
+    const teacher = DB.teachers.find(t => t.id === c.teacherId);
+    msg += c.date + ' ' + c.startTime + '-' + c.endTime + ' ' + c.name + ' (' + (teacher ? teacher.name : '未分配') + ')\n';
+  });
+  alert(msg);
 }
 
 /* ---------- 学生管理（内联编辑） ---------- */
@@ -3104,17 +3197,12 @@ async function addStudentInline() {
 }
 
 async function expandStudents() {
-  const current = DB.students.length;
-  if (current >= 100) {
-    alert('当前已有 ' + current + ' 名学生，无需扩充');
-    return;
-  }
-  if (!confirm('将自动添加 ' + (100 - current) + ' 名学生（学生' + (current + 1) + ' ~ 学生100），不影响现有排课数据。确认？')) return;
+  if (!confirm('将添加 20 名学生，不影响现有排课数据。确认？')) return;
   try {
     const res = await fetch('/api/students/expand', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetCount: 100 })
+      body: JSON.stringify({ count: 20 })
     });
     const data = await res.json();
     if (data.added > 0) {
@@ -3122,7 +3210,7 @@ async function expandStudents() {
       await loadData();
       renderStudentList();
     } else {
-      alert('无需添加，学生已满');
+      alert('添加失败');
     }
   } catch (e) {
     alert('扩充失败: ' + e.message);
