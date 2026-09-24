@@ -387,6 +387,7 @@ a { color: var(--primary); text-decoration: none; }
 
   /* 按钮隐藏文字只留图标 */
   .btn span.hide-mobile { display: none; }
+  .hide-mobile { display: none !important; }
   .btn { padding: 6px 10px; }
 
   /* 周视图：允许横向滚动，不压缩7列 */
@@ -713,10 +714,10 @@ a { color: var(--primary); text-decoration: none; }
           <option value="5">5个月</option>
           <option value="6">6个月</option>
         </select>
-        <button class="btn btn-sm btn-icon" id="undoBtn" onclick="doUndo()" title="撤销 (Ctrl+Z)" style="opacity:0.4;cursor:not-allowed;" disabled>
+        <button class="btn btn-sm btn-icon hide-mobile" id="undoBtn" onclick="doUndo()" title="撤销 (Ctrl+Z)" style="opacity:0.4;cursor:not-allowed;" disabled>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-15-6.7L3 13"></path></svg>
         </button>
-        <button class="btn btn-sm btn-icon" id="redoBtn" onclick="doRedo()" title="重做 (Ctrl+Y)" style="opacity:0.4;cursor:not-allowed;" disabled>
+        <button class="btn btn-sm btn-icon hide-mobile" id="redoBtn" onclick="doRedo()" title="重做 (Ctrl+Y)" style="opacity:0.4;cursor:not-allowed;" disabled>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 15-6.7L21 13"></path></svg>
         </button>
         <button class="btn btn-primary btn-sm" id="newCourseBtn" onclick="openCourseModal()">
