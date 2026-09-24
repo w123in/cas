@@ -3034,6 +3034,7 @@ function renderSettingsPage() {
     <div style="display:flex;gap:8px;align-items:center;">
       <input type="text" id="settingsStudentSearch" placeholder="搜索学生..." oninput="renderStudentList()" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:160px;">
       <button class="btn btn-primary btn-sm" onclick="addStudentInline()">+ 添加</button>
+      <button class="btn btn-sm" style="background:#e8a317;color:#fff;" onclick="expandStudents()">扩充到100人</button>
     </div>
   </div>
 
@@ -3100,6 +3101,32 @@ function renderStudentList() {
 /* ---------- 学生管理（内联编辑） ---------- */
 async function addStudentInline() {
   showStudentModal(null);
+}
+
+async function expandStudents() {
+  const current = DB.students.length;
+  if (current >= 100) {
+    alert('当前已有 ' + current + ' 名学生，无需扩充');
+    return;
+  }
+  if (!confirm('将自动添加 ' + (100 - current) + ' 名学生（学生' + (current + 1) + ' ~ 学生100），不影响现有排课数据。确认？')) return;
+  try {
+    const res = await fetch('/api/students/expand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetCount: 100 })
+    });
+    const data = await res.json();
+    if (data.added > 0) {
+      alert('成功添加 ' + data.added + ' 名学生，共 ' + data.total + ' 人');
+      await loadData();
+      renderStudentList();
+    } else {
+      alert('无需添加，学生已满');
+    }
+  } catch (e) {
+    alert('扩充失败: ' + e.message);
+  }
 }
 
 async function editStudentInline(studentId) {

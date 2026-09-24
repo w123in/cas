@@ -100,7 +100,7 @@ function getDefaultDB() {
 
 function initStudents(DB) {
   DB.students = [];
-  for (let i = 1; i <= 50; i++) {
+  for (let i = 1; i <= 100; i++) {
     DB.students.push({
       id: 's' + i,
       name: '学生' + i,
@@ -666,6 +666,36 @@ app.put('/api/teachers/:id', authRequired, (req, res) => {
 /* ---------- 学生管理 API ---------- */
 app.get('/api/students', authRequired, (req, res) => {
   res.json(DB.students);
+});
+
+// 一键扩充学生到指定数量（默认100），不影响现有数据
+app.post('/api/students/expand', authRequired, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'admin only' });
+  }
+  const targetCount = parseInt(req.body.targetCount) || 100;
+  // 找当前最大数字编号
+  let maxNum = 0;
+  DB.students.forEach(s => {
+    const m = s.id.match(/^s(\d+)$/);
+    if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+  });
+  const added = [];
+  for (let i = maxNum + 1; i <= targetCount; i++) {
+    const student = {
+      id: 's' + i,
+      name: '学生' + i,
+      timezone: 'Asia/Shanghai'
+    };
+    DB.students.push(student);
+    added.push(student);
+  }
+  if (added.length > 0) {
+    saveHistory();
+    persist();
+    io.emit('data_updated', { students: DB.students });
+  }
+  res.json({ added: added.length, total: DB.students.length });
 });
 
 app.post('/api/students', authRequired, (req, res) => {
